@@ -1,6 +1,6 @@
 {
-  "name": "tsl-Uniform-UI-Vite-Plugin",
-  "version": "0.0.0",
+  "name": "tsl-uniform-ui-vite-plugin",
+  "version": "0.1.0",
   "type": "module",
   "keywords": [
     "tsl",
@@ -11,15 +11,15 @@
   ],
   "author": "Bhushan Wagh (https://github.com/bhushan6)",
   "bugs": {
-    "url": "https://github.com/bhushan6/tsl-Uniform-UI-Vite-Plugin/issues"
+    "url": "https://github.com/bhushan6/tsl-uniform-ui-vite-plugin/issues"
   },
-  "homepage": "https://github.com/bhushan6/tsl-Uniform-UI-Vite-Plugin#readme",
+  "homepage": "https://github.com/bhushan6/tsl-uniform-ui-vite-plugin#readme",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-Uniform-UI-Vite-Plugin@latest",
-    "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-Uniform-UI-Vite-Plugin@latest",
-    "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-Uniform-UI-Vite-Plugin@latest",
+    "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
+    "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
+    "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "preview": "vite preview"
   },
   "license": "MIT",
