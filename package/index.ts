@@ -19,7 +19,8 @@ interface UniformInfo {
     | "vector3"
     | "vector4"
     | "matrix3"
-    | "matrix4";
+    | "matrix4"
+    | "texture";
   position: number;
 }
 
@@ -137,7 +138,28 @@ function generateControl(uniform: UniformInfo): string {
           )
           .join("\n")}
       `;
-
+    case "texture":
+      return `const ${uniform.name}Params = {
+          file: "",
+      }
+      const ${uniform.name}Folder = pane.addFolder({
+        title: '${uniform.name}'
+      });
+      ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
+        view: "file-input",
+        lineCount: 3,
+        filetypes: [".png", ".jpg"],
+        invalidFiletypeMessage: "We can't accept those filetypes!",
+      })
+      .on("change", (ev) => {
+        if (!ev.value) {
+          return;
+        }
+        const imageFile = ev.value;
+        const blobUrl = URL.createObjectURL(imageFile);
+        const texture = new THREE.TextureLoader().load(blobUrl);
+        ${uniform.name}.value = texture;
+      });`;
     default:
       return "";
   }
@@ -179,6 +201,20 @@ export default function threeUniformGuiPlugin(): Plugin {
                   position: path.node.end,
                 });
               }
+            }
+            // Check for texture uniform patterns
+            if (
+              t.isIdentifier(path.node.id) &&
+              t.isCallExpression(path.node.init) &&
+              t.isIdentifier(path.node.init.callee) &&
+              path.node.init.callee.name === "texture" &&
+              path.node.end
+            ) {
+              uniforms.push({
+                name: path.node.id.name,
+                type: "texture",
+                position: path.node.end,
+              });
             }
           },
           //@ts-ignore
@@ -228,11 +264,17 @@ export default function threeUniformGuiPlugin(): Plugin {
 
         modifiedCode =
           modifiedCode.slice(0, lastImportIndex) +
-          '\nconst pane = new Pane({ title: "Shader Uniforms" });\n' +
+          `\nconst pane = new Pane({ title: "Shader Uniforms" });\n
+          pane.registerPlugin(TweakpaneFileImportPlugin);\n
+          ` +
           modifiedCode.slice(lastImportIndex);
 
         if (!paneExists) {
-          modifiedCode = `import { Pane } from 'tweakpane';\n` + modifiedCode;
+          modifiedCode =
+            `
+          import { Pane } from 'tweakpane';\n
+          import * as TweakpaneFileImportPlugin from 'tweakpane-plugin-file-import';\n
+          ` + modifiedCode;
         }
 
         debug.log("Successfully transformed file");

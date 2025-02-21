@@ -35,7 +35,8 @@
   "dependencies": {
     "@babel/parser": "^7.26.9",
     "@babel/traverse": "^7.26.9",
-    "@babel/types": "^7.26.9"
+    "@babel/types": "^7.26.9",
+    "tweakpane-plugin-file-import": "^1.1.1"
   },
   "devDependencies": {
     "@types/babel__traverse": "^7.20.6",

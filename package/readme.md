@@ -2,6 +2,8 @@
 
 A Vite plugin that automatically generates GUI controls for Three.js shader uniforms using Tweakpane. This plugin simplifies shader development by providing real-time controls for uniform values without manual GUI setup.
 
+<video src="../assets/demo.mp4" width="320" height="240" controls></video>
+
 ## Features
 
 - Automatic GUI generation for shader uniforms
@@ -10,14 +12,13 @@ A Vite plugin that automatically generates GUI controls for Three.js shader unif
   - Number
   - Color
   - Vector2/3/4
-  - Matrix3/4
-- Type-safe with TypeScript support
+  - Texture
 - Seamless integration with Vite and Three.js
 
 ## Installation
 
 ```bash
-npm install tsl-uniform-ui-vite-plugin
+npm install tsl-uniform-ui-vite-plugin @tweakpane/core tweakpane tweakpane-plugin-file-import
 ```
 
 ## Usage
@@ -55,7 +56,7 @@ The plugin will automatically generate appropriate Tweakpane controls for each u
 | Vector2 | `uniform(new THREE.Vector2())` | X/Y Sliders |
 | Vector3 | `uniform(new THREE.Vector3())` | X/Y/Z Sliders |
 | Vector4 | `uniform(new THREE.Vector4())` | X/Y/Z/W Sliders |
-
+| Texture | `texture(new THREE.TextureLoader().load("/uv.png"))` | File Picker |
 
 ## Requirements
 

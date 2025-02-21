@@ -1,6 +1,8 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { Fn, mix, positionGeometry, uniform } from "three/tsl";
+import { float, Fn, mix, positionGeometry, select, texture, uniform } from "three/tsl";
 import * as THREE from "three/webgpu";
+import { Pane } from "tweakpane";
+import * as TweakpaneFileImportPlugin from "tweakpane-plugin-file-import";
 
 export class Experience {
   private _canvas: HTMLCanvasElement;
@@ -85,7 +87,6 @@ export class Experience {
       side: THREE.FrontSide,
     });
 
-
     const box = new THREE.Mesh(boxGeometry, boxMaterial);
     this._scene.add(this._parent);
 
@@ -97,14 +98,21 @@ export class Experience {
 
     const scale = uniform(1);
     const position = uniform(new THREE.Vector3(0, 0, 0));
-    
-    const vec4 = uniform(new THREE.Vector4(0, 0, 0, 0));
-    const boolean = uniform(false);
 
-    boxMaterial.colorNode = mix(color1, color2, progress);
+    const vec4 = uniform(new THREE.Vector4(0, 0, 0, 0));
+    const renderTexture = uniform(false);
+
+    const tex = new THREE.TextureLoader().load("/uv.png");
+
+    const textureUniform = texture(tex);
+ 
+
+    boxMaterial.colorNode = Fn(() => {
+      return textureUniform;
+    })();
     boxMaterial.positionNode = Fn(() => {
-        return positionGeometry.add(position).mul(scale);
-    })()
+      return positionGeometry.add(position).mul(scale);
+    })();
   }
 
   private onWindowResize = () => {
