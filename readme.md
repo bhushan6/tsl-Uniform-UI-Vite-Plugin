@@ -2,6 +2,8 @@
 
 A Vite plugin that automatically generates GUI controls for Three.js shader uniforms using Tweakpane. This plugin simplifies shader development by providing real-time controls for uniform values without manual GUI setup.
 
+<video src="./assets/demo.mp4" width="320" height="240" controls></video>
+
 ## Features
 
 - Automatic GUI generation for shader uniforms

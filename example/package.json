@@ -19,6 +19,7 @@
     "@tweakpane/core": "^2.0.5",
     "@types/three": "^0.173.0",
     "three": "^0.173.0",
+    "tsl-uniform-ui-vite-plugin": "^0.1.0",
     "tweakpane": "^4.0.5"
   }
 }

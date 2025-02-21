@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
-import p from "../package/index"
+import threeUniformGui from "tsl-uniform-ui-vite-plugin"
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    p()
+    threeUniformGui()
 ],
 })
