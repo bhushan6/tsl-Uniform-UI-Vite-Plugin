@@ -1,0 +1,24 @@
+{
+  "name": "three-tsl-boilerplate",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.26.9",
+    "@babel/traverse": "^7.26.9",
+    "@babel/types": "^7.26.9",
+    "typescript": "~5.7.2",
+    "vite": "^6.1.0"
+  },
+  "dependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "@types/three": "^0.173.0",
+    "three": "^0.173.0",
+    "tweakpane": "^4.0.5"
+  }
+}
