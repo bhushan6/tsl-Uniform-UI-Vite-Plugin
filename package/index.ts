@@ -169,7 +169,6 @@ export default function threeUniformGuiPlugin(): Plugin {
               t.isIdentifier(path.node.id)
             ) {
               const [valueArg, typeArg] = path.node.init.arguments;
-              console.log({ name: path.node.id.name, valueArg });
 
               const type = getUniformType(valueArg, typeArg);
 
