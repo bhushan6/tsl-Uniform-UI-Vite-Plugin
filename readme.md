@@ -13,7 +13,7 @@ A Vite plugin that automatically generates GUI controls for Three.js shader unif
   - Color
   - Vector2/3/4
   - Texture
-- Seamless integration with Vite and Three.js
+- Export Configs
 
 ## Installation
 
