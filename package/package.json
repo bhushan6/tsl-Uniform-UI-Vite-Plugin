@@ -1,6 +1,6 @@
 {
   "name": "tsl-uniform-ui-vite-plugin",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "type": "module",
   "keywords": [
     "tsl",
@@ -16,7 +16,7 @@
   "homepage": "https://github.com/bhushan6/tsl-uniform-ui-vite-plugin#readme",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",

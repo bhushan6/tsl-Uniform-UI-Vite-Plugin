@@ -4,6 +4,27 @@ import traverseDefault from "@babel/traverse";
 import type { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 
+const pathUtils = {
+  basename: (filePath: string, ext?: string): string => {
+    // Extract file name from path
+    const parts = filePath.split(/[/\\]/);
+    let fileName = parts[parts.length - 1];
+    
+    // Remove extension if provided
+    if (ext && fileName.endsWith(ext)) {
+      fileName = fileName.slice(0, -ext.length);
+    }
+    
+    return fileName;
+  },
+  
+  extname: (filePath: string): string => {
+    // Extract extension from filename
+    const lastDotIndex = filePath.lastIndexOf('.');
+    return lastDotIndex !== -1 ? filePath.slice(lastDotIndex) : '';
+  }
+};
+
 // @ts-ignore
 const traverse = (traverseDefault.default ||
   // @ts-ignore
@@ -40,15 +61,18 @@ function getUniformType(
   if (typeNode && t.isStringLiteral(typeNode)) {
     const explicitType = typeNode.value.toLowerCase();
     switch (explicitType) {
-      case "boolean":
-      case "number":
+      case "float":
+        return "number";
+      case "bool":
+        return "boolean";
       case "color":
-      case "vector2":
-      case "vector3":
-      case "vector4":
-      case "matrix3":
-      case "matrix4":
-        return explicitType;
+        return "color";
+      case "vec2":
+        return "vector2";
+      case "vec3":
+        return "vector3";
+      case "vec4":
+        return "vector4";
       default:
         return null;
     }
@@ -83,35 +107,56 @@ function getUniformType(
   if (t.isBooleanLiteral(valueNode)) return "boolean";
   if (t.isMemberExpression(valueNode)) return "number";
 
+  // console.log(t.isAccessor(valueNode));
+
   return null;
 }
-
-function generateControl(uniform: UniformInfo): string {
+const addSubfolder = (folderName: string, subfolderInit: string) => {
+  return `{
+    let folder = window.uniformPane.children.find(child => child.title === '${folderName}');
+    if(folder){
+      ${subfolderInit}
+    }else{
+        
+    }
+    }
+  `;
+};
+function generateControl(uniform: UniformInfo, folderName: string): string {
   switch (uniform.type) {
     case "boolean":
-      return `
-        pane.addBinding(${uniform.name}, 'value', {
-          label: '${uniform.name}'
-        });
-      `;
+      return addSubfolder(
+        folderName,
+        `
+          folder.addBinding(${uniform.name}, 'value', {
+            label: '${uniform.name}'
+          });
+      `
+      );
 
     case "number":
-      return `
-        pane.addBinding(${uniform.name}, 'value', {
+      return addSubfolder(
+        folderName,
+        `
+       folder.addBinding(${uniform.name}, 'value', {
           label: '${uniform.name}',
           step: 0.01
         });
-      `;
+      `
+      );
 
     case "color":
-      return `
-        pane.addBinding(${uniform.name}, 'value', {
+      return addSubfolder(
+        folderName,
+        `
+       folder.addBinding(${uniform.name}, 'value', {
           label: '${uniform.name}',
           view: 'color',
           picker: 'inline',
           color: {type: 'float'},
         });
-      `;
+      `
+      );
 
     case "vector2":
     case "vector3":
@@ -123,8 +168,10 @@ function generateControl(uniform: UniformInfo): string {
           ? ["x", "y", "z"]
           : ["x", "y", "z", "w"];
 
-      return `
-        const ${uniform.name}Folder = pane.addFolder({
+      return addSubfolder(
+        folderName,
+        `
+        const ${uniform.name}Folder =folder.addFolder({
           title: '${uniform.name}'
         });
         ${axes
@@ -137,12 +184,15 @@ function generateControl(uniform: UniformInfo): string {
         `
           )
           .join("\n")}
-      `;
+      `
+      );
     case "texture":
-      return `const ${uniform.name}Params = {
+      return addSubfolder(
+        folderName,
+        `const ${uniform.name}Params = {
           file: "",
       }
-      const ${uniform.name}Folder = pane.addFolder({
+      const ${uniform.name}Folder =folder.addFolder({
         title: '${uniform.name}'
       });
       ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
@@ -159,7 +209,8 @@ function generateControl(uniform: UniformInfo): string {
         const blobUrl = URL.createObjectURL(imageFile);
         const texture = new THREE.TextureLoader().load(blobUrl);
         ${uniform.name}.value = texture;
-      });`;
+      });`
+      );
     default:
       return "";
   }
@@ -192,7 +243,19 @@ export default function threeUniformGuiPlugin(): Plugin {
             ) {
               const [valueArg, typeArg] = path.node.init.arguments;
 
-              const type = getUniformType(valueArg, typeArg);
+              let type = getUniformType(valueArg, typeArg);
+
+              if (!type && t.isIdentifier(valueArg)) {
+                const binding = path.scope.getBinding(valueArg.name);
+                if (
+                  binding &&
+                  binding.kind !== "module" &&
+                  binding.path.node.init
+                ) {
+                  const initNode = binding.path.node.init;
+                  type = getUniformType(initNode);
+                }
+              }
 
               if (type && path.node.end) {
                 uniforms.push({
@@ -238,6 +301,9 @@ export default function threeUniformGuiPlugin(): Plugin {
           return;
         }
 
+        const ext = pathUtils.extname(id);
+        const fileName = pathUtils.basename(id, ext);
+
         debug.log("Found uniforms:", uniforms);
 
         uniforms.sort((a, b) => b.position - a.position);
@@ -254,7 +320,7 @@ export default function threeUniformGuiPlugin(): Plugin {
         });
 
         uniforms.forEach((uniform) => {
-          const control = generateControl(uniform);
+          const control = generateControl(uniform, `uniform_${fileName}`);
           modifiedCode =
             modifiedCode.slice(0, uniform.position) +
             ";\n" +
@@ -264,51 +330,63 @@ export default function threeUniformGuiPlugin(): Plugin {
 
         modifiedCode =
           modifiedCode.slice(0, lastImportIndex) +
-          `\nconst pane = new Pane({ title: "Shader Uniforms" });
-          pane.registerPlugin(TweakpaneFileImportPlugin);
-          
-          const btn = pane.addButton({
-            title: 'Copy configs',
-          });
+          `
+          console.log(window.uniformPane)
+          if (!window.uniformPane) {
+            window.uniformPane = new Pane({ title: "Shader Uniforms" });
+            window.uniformPane.registerPlugin(TweakpaneFileImportPlugin);
 
-          let t;
+             const btn = window.uniformPane.addButton({
+                title: 'Copy configs',
+              });
 
-          btn.on('click', () => {
-            if(t) clearTimeout(t)
-            btn.title =  'Coping...'
-            pane.refresh()
+              
+              let t;
 
-            const paneState = pane.exportState()
-            
-            const extractValues = (children, accumulator) => {
-              return children.reduce((acc, value) => {
-                if(value.label){
-                  if(value.binding.value?.isColor){
-                    acc[value.label] = Number(JSON.stringify(value.binding.value)).toString(16);
-                    while (acc[value.label].length < 6) {
-                      acc[value.label] = "0" + acc[value.label];
+              btn.on('click', () => {
+                if(t) clearTimeout(t)
+                btn.title =  'Coping...'
+                window.uniformPane.refresh()
+
+                const paneState =  window.uniformPane.exportState()
+                
+                const extractValues = (children, accumulator) => {
+                  return children.reduce((acc, value) => {
+                    if(value.label){
+                      if(value.binding.value?.isColor){
+                        acc[value.label] = Number(JSON.stringify(value.binding.value)).toString(16);
+                        while (acc[value.label].length < 6) {
+                          acc[value.label] = "0" + acc[value.label];
+                        }
+                      }else{
+                        acc[value.label] = value.binding.value
+                      }
                     }
-                  }else{
-                    acc[value.label] = value.binding.value
-                  }
+                    if(value.children){
+                      acc[value.title] = extractValues(value.children, {})
+                    }
+                    return acc;
+                  }, accumulator)
                 }
-                if(value.children){
-                  acc[value.title] = extractValues(value.children, {})
-                }
-                return acc;
-              }, accumulator)
-            }
-            
-            const uniformState = extractValues(paneState.children, {});
-            navigator.clipboard.writeText(JSON.stringify(uniformState))
-            btn.title =  'Copied!!'
-            pane.refresh()
+                
+                const uniformState = extractValues(paneState.children, {});
+                navigator.clipboard.writeText(JSON.stringify(uniformState))
+                btn.title =  'Copied!!'
+                window.uniformPane.refresh()
 
-            t = setTimeout(() => {
-              btn.title =  'Copy configs'
-              pane.refresh()
-            }, 1000)
-          });
+                t = setTimeout(() => {
+                  btn.title =  'Copy configs'
+                  window.uniformPane.refresh()
+                }, 1000)
+              });
+          }
+              let folder = window.uniformPane.children.find(child => child.title === 'uniform_${fileName}');
+              if (folder) {
+                folder.dispose();
+              }
+
+              window.uniformPane.addFolder({ title: 'uniform_${fileName}'});
+
           ` +
           modifiedCode.slice(lastImportIndex);
 
