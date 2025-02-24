@@ -264,8 +264,51 @@ export default function threeUniformGuiPlugin(): Plugin {
 
         modifiedCode =
           modifiedCode.slice(0, lastImportIndex) +
-          `\nconst pane = new Pane({ title: "Shader Uniforms" });\n
-          pane.registerPlugin(TweakpaneFileImportPlugin);\n
+          `\nconst pane = new Pane({ title: "Shader Uniforms" });
+          pane.registerPlugin(TweakpaneFileImportPlugin);
+          
+          const btn = pane.addButton({
+            title: 'Copy configs',
+          });
+
+          let t;
+
+          btn.on('click', () => {
+            if(t) clearTimeout(t)
+            btn.title =  'Coping...'
+            pane.refresh()
+
+            const paneState = pane.exportState()
+            
+            const extractValues = (children, accumulator) => {
+              return children.reduce((acc, value) => {
+                if(value.label){
+                  if(value.binding.value?.isColor){
+                    acc[value.label] = Number(JSON.stringify(value.binding.value)).toString(16);
+                    while (acc[value.label].length < 6) {
+                      acc[value.label] = "0" + acc[value.label];
+                    }
+                  }else{
+                    acc[value.label] = value.binding.value
+                  }
+                }
+                if(value.children){
+                  acc[value.title] = extractValues(value.children, {})
+                }
+                return acc;
+              }, accumulator)
+            }
+            
+            const uniformState = extractValues(paneState.children, {});
+            navigator.clipboard.writeText(JSON.stringify(uniformState))
+            btn.title =  'Copied!!'
+            pane.refresh()
+
+            t = setTimeout(() => {
+              btn.title =  'Copy configs'
+              pane.refresh()
+            }, 1000)
+          });
           ` +
           modifiedCode.slice(lastImportIndex);
 
