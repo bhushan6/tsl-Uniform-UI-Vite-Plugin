@@ -16,6 +16,7 @@ A Vite plugin that automatically generates GUI controls for Three.js shader unif
 - Export Configs
 - Presistent configs
 - undo/redo
+- Presets
 
 ## Installation
 

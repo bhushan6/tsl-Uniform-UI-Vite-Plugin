@@ -4,7 +4,6 @@ class UniformUIController {
 
   constructor(persistent) {
     this.persistent = persistent;
-    this.setupCopyConfigButton();
     
     if (this.persistent) {
       const savedState = localStorage.getItem("threeUniformGuiPluginState");
@@ -23,6 +22,78 @@ class UniformUIController {
       const uniformState = this.uniformStateSerializer();
       this.currentState = uniformState
     }
+
+    const presets = localStorage.getItem("threeUniformGuiPluginPresets");
+    if(presets) {
+      this.presets = JSON.parse(presets)
+    }
+  }
+
+  setupUI(){
+    this.setupCopyConfigButton();
+    this.setupUndoRedoButtons()
+    this.setupPresets();
+  }
+
+  presets = {}
+
+  setupPresets() {
+    const presetFolder = this.pane.addFolder({
+      title: 'Presets',
+      expanded: false
+    })
+
+    const PRESETPARAMS = {
+      newPresetName: "",
+      currentPreset: "",
+    }
+
+    presetFolder.addBinding(PRESETPARAMS, "newPresetName", {
+      label: "Name"
+    })
+    
+    const btn = presetFolder.addButton({
+      title: 'Create Preset',
+    });
+
+    const createPresetDropDown = () => {
+      const options = Object.keys(this.presets).reduce((acc, value) => {
+        acc[value] = value
+        return acc
+      }, {none: ""})
+
+      const presetDropDown = presetFolder.addBinding(PRESETPARAMS, "currentPreset", {
+        options: options
+      }).on("change", (e) => {
+        if(e.value.trim() === ""){
+          this.undoRedoInProgress = true;
+          this.currentState && this.applyConfigs(this.currentState)
+          this.undoRedoInProgress = false;
+          return;
+        }
+        const configs = this.presets[e.value]
+        this.undoRedoInProgress = true;
+        configs && this.applyConfigs(configs)
+        this.undoRedoInProgress = false;
+      })
+      return presetDropDown
+    }
+
+    let presetOptions = createPresetDropDown()
+   
+
+    btn.on('click', () => {
+      const newPresetName = PRESETPARAMS.newPresetName;
+      if(newPresetName.trim() === "") return;
+      const newPreset = this.uniformStateSerializer();
+      delete newPreset.Presets
+      this.presets[newPresetName] = newPreset;
+      presetOptions.dispose()
+      presetOptions = createPresetDropDown()
+      localStorage.setItem("threeUniformGuiPluginPresets", JSON.stringify(this.presets));
+      PRESETPARAMS.newPresetName = ""
+      this.pane.refresh()
+    });
   }
 
   setupCopyConfigButton() {
@@ -72,26 +143,30 @@ class UniformUIController {
         return acc;
       }, accumulator);
     };
-
-    return extractValues(paneState.children, {});
+    const state = extractValues(paneState.children, {})
+    delete state.Presets
+    return state;
   };
 
   applyConfigs = (configs) => {
     const paneState = this.pane.exportState();
+    
     const applyValues = (children, params) => {
       children.forEach(child => {
-        if(child.binding){
-          const value = params[child.label]
-          if(child.binding.value?.isColor){
-            const colorValue = JSON.parse(value)
-            child.binding.value.r = colorValue.r
-            child.binding.value.g = colorValue.g
-            child.binding.value.b = colorValue.b
-          }else{
-            child.binding.value = value
+        if(child.title !== 'Presets'){
+          if(child.binding){
+            const value = params[child.label]
+            if(child.binding.value?.isColor){
+              const colorValue = JSON.parse(value)
+              child.binding.value.r = colorValue.r
+              child.binding.value.g = colorValue.g
+              child.binding.value.b = colorValue.b
+            }else{
+              child.binding.value = value
+            }
+          }else if(child.children){
+            applyValues(child.children, params[child.title])
           }
-        }else if(child.children){
-          applyValues(child.children, params[child.title])
         }
       })
     }

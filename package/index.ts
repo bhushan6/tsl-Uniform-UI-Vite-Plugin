@@ -375,7 +375,7 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
             window.uniformPane = new UniformUIController(${persistent});
             window.uniformPane.pane.registerPlugin(TweakpaneEssentialsPlugin);
             window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
-            window.uniformPane.setupUndoRedoButtons()
+             window.uniformPane.setupUI()
           }
           
           let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');

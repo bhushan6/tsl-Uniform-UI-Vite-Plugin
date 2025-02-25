@@ -1,5 +1,14 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { float, Fn, mix, positionGeometry, select, texture, uniform } from "three/tsl";
+import {
+  float,
+  Fn,
+  mix,
+  positionGeometry,
+  remap,
+  select,
+  texture,
+  uniform,
+} from "three/tsl";
 import * as THREE from "three/webgpu";
 import { Pane } from "tweakpane";
 import * as TweakpaneFileImportPlugin from "tweakpane-plugin-file-import";
@@ -99,69 +108,12 @@ export class Experience {
     const scale = uniform(1, "float");
     const position = uniform(new THREE.Vector3(0, 0, 0), "vec3");
 
-    const vec4 = uniform(new THREE.Vector4(0, 0, 0, 0));
-    const renderTexture = uniform(false, "bool");
-
-    const randomColor = () => new THREE.Color(
-      Math.random() * 0xffffff
-    );
-    
-    const randomVector2 = () => new THREE.Vector2(
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1
-    );
-    
-    const randomVector3 = () => new THREE.Vector3(
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1
-    );
-    
-    const randomVector4 = () => new THREE.Vector4(
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1,
-      Math.random() * 2 - 1
-    );
-
-    const c = new THREE.Color(
-      Math.random() * 0xffffff
-    );
-    
-    // Create random uniforms
-    const baseColor = uniform(c);
-    const highlightColor = uniform(randomColor(), "color");
-    // const ambientColor = uniform(randomColor());
-    
-    const opacity = uniform(Math.random(), "float");
-    // const shininess = uniform(Math.random() * 100);
-    // const metalness = uniform(Math.random());
-    // const roughness = uniform(Math.random());
-    
-    // const objectScale = uniform(Math.random() * 3);
-    // const objectPosition = uniform(randomVector3());
-    // const objectRotation = uniform(randomVector3());
-    
-    // const noiseScale = uniform(Math.random() * 5);
-    // const noiseStrength = uniform(Math.random() * 2);
-    
-    // const uvOffset = uniform(randomVector2());
-    // const timeScale = uniform(Math.random() * 2);
-    
-    // const clipPlane = uniform(randomVector4());
-    // const useTexture = uniform(Math.random() > 0.5);
-    // const useNormalMap = uniform(Math.random() > 0.5);
-    
-    // const lightIntensity = uniform(Math.random() * 5);
-    // const lightPosition = uniform(randomVector3());
-    // const lightColor = uniform(randomColor());
-
     const tex = new THREE.TextureLoader().load("/uv.png");
 
     const textureUniform = texture(tex);
- 
+
     boxMaterial.colorNode = Fn(() => {
-      return mix(color1, color2, progress);
+      return mix(color1, color2, remap(positionGeometry.y, -1, 1, 0, 1));
     })();
     boxMaterial.positionNode = Fn(() => {
       return positionGeometry.add(position).mul(scale);
