@@ -9,20 +9,20 @@ const pathUtils = {
     // Extract file name from path
     const parts = filePath.split(/[/\\]/);
     let fileName = parts[parts.length - 1];
-    
+
     // Remove extension if provided
     if (ext && fileName.endsWith(ext)) {
       fileName = fileName.slice(0, -ext.length);
     }
-    
+
     return fileName;
   },
-  
+
   extname: (filePath: string): string => {
     // Extract extension from filename
-    const lastDotIndex = filePath.lastIndexOf('.');
-    return lastDotIndex !== -1 ? filePath.slice(lastDotIndex) : '';
-  }
+    const lastDotIndex = filePath.lastIndexOf(".");
+    return lastDotIndex !== -1 ? filePath.slice(lastDotIndex) : "";
+  },
 };
 
 // @ts-ignore
@@ -122,14 +122,28 @@ const addSubfolder = (folderName: string, subfolderInit: string) => {
     }
   `;
 };
-function generateControl(uniform: UniformInfo, folderName: string): string {
+
+function generateControl(
+  uniform: UniformInfo,
+  folderName: string,
+  persistent?: boolean
+): string {
   switch (uniform.type) {
     case "boolean":
       return addSubfolder(
         folderName,
         `
+          if(window.initialUniformState){
+            if(window.initialUniformState.${folderName}?.${uniform.name}){
+              console.log(window.initialUniformState.${folderName}.${uniform.name})
+              ${uniform.name}.value = window.initialUniformState.${folderName}.${uniform.name}
+            }
+          }
           folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}'
+          }).on("change", () => {
+              console.log(${uniform.name}.value)
+              ${persistent} && window.uniformSaveDebounced()
           });
       `
       );
@@ -138,10 +152,18 @@ function generateControl(uniform: UniformInfo, folderName: string): string {
       return addSubfolder(
         folderName,
         `
-       folder.addBinding(${uniform.name}, 'value', {
-          label: '${uniform.name}',
-          step: 0.01
-        });
+          if(window.initialUniformState){
+            if(window.initialUniformState.${folderName}?.${uniform.name}){
+              console.log(window.initialUniformState.${folderName}.${uniform.name})
+              ${uniform.name}.value = window.initialUniformState.${folderName}.${uniform.name}
+            }
+          }
+        folder.addBinding(${uniform.name}, 'value', {
+            label: '${uniform.name}',
+            step: 0.01
+          }).on("change", () => {
+              ${persistent} && window.uniformSaveDebounced()
+          });
       `
       );
 
@@ -149,11 +171,21 @@ function generateControl(uniform: UniformInfo, folderName: string): string {
       return addSubfolder(
         folderName,
         `
-       folder.addBinding(${uniform.name}, 'value', {
-          label: '${uniform.name}',
-          view: 'color',
-          picker: 'inline',
-          color: {type: 'float'},
+        if(window.initialUniformState){
+            if(window.initialUniformState.${folderName}?.${uniform.name}){
+              console.log(window.initialUniformState.${folderName}.${uniform.name})
+              
+              const color = JSON.parse(window.initialUniformState.${folderName}.${uniform.name} )
+              ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
+            }
+        }
+        folder.addBinding(${uniform.name}, 'value', {
+            label: '${uniform.name}',
+            view: 'color',
+            picker: 'inline',
+            color: {type: 'float'},
+        }).on("change", () => {
+              ${persistent} && window.uniformSaveDebounced()
         });
       `
       );
@@ -171,52 +203,64 @@ function generateControl(uniform: UniformInfo, folderName: string): string {
       return addSubfolder(
         folderName,
         `
-        const ${uniform.name}Folder =folder.addFolder({
+        const ${uniform.name}Folder = folder.addFolder({
           title: '${uniform.name}'
-        });
+        }) 
+        
         ${axes
-          .map(
-            (axis) => `
+          .map((axis) => {
+            return `
+             if(window.initialUniformState){
+              if(window.initialUniformState.${folderName}?.${uniform.name}){
+                console.log(window.initialUniformState.${folderName}.${uniform.name})
+                
+                const value = window.initialUniformState.${folderName}.${uniform.name}
+                ${uniform.name}.value.${axis} = value.${axis}
+              }
+            }
           ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
             label: '${axis}',
             step: 0.01
+          }).on("change", () => {
+            ${persistent} &&  window.uniformSaveDebounced()
           });
-        `
-          )
+        `;
+          })
           .join("\n")}
       `
       );
     case "texture":
       return addSubfolder(
         folderName,
-        `const ${uniform.name}Params = {
-          file: "",
-      }
-      const ${uniform.name}Folder =folder.addFolder({
-        title: '${uniform.name}'
-      });
-      ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
-        view: "file-input",
-        lineCount: 3,
-        filetypes: [".png", ".jpg"],
-        invalidFiletypeMessage: "We can't accept those filetypes!",
-      })
-      .on("change", (ev) => {
-        if (!ev.value) {
-          return;
-        }
-        const imageFile = ev.value;
-        const blobUrl = URL.createObjectURL(imageFile);
-        const texture = new THREE.TextureLoader().load(blobUrl);
-        ${uniform.name}.value = texture;
-      });`
+        ` const ${uniform.name}Params = {
+            file: "",
+          }
+          const ${uniform.name}Folder = folder.addFolder({
+            title: '${uniform.name}'
+          });
+          ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
+            view: "file-input",
+            lineCount: 3,
+            filetypes: [".png", ".jpg"],
+            invalidFiletypeMessage: "We can't accept those filetypes!",
+          })
+          .on("change", (ev) => {
+            if (!ev.value) {
+              return;
+            }
+            const imageFile = ev.value;
+            const blobUrl = URL.createObjectURL(imageFile);
+            const texture = new THREE.TextureLoader().load(blobUrl);
+            ${uniform.name}.value = texture;
+            ${persistent} && window.uniformSaveDebounced()
+          });`
       );
     default:
       return "";
   }
 }
 
-export default function threeUniformGuiPlugin(): Plugin {
+export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
   return {
     name: "three-uniform-gui",
     transform(code, id) {
@@ -320,7 +364,11 @@ export default function threeUniformGuiPlugin(): Plugin {
         });
 
         uniforms.forEach((uniform) => {
-          const control = generateControl(uniform, `uniform_${fileName}`);
+          const control = generateControl(
+            uniform,
+            `uniform_${fileName}`,
+            persistent
+          );
           modifiedCode =
             modifiedCode.slice(0, uniform.position) +
             ";\n" +
@@ -331,7 +379,6 @@ export default function threeUniformGuiPlugin(): Plugin {
         modifiedCode =
           modifiedCode.slice(0, lastImportIndex) +
           `
-          console.log(window.uniformPane)
           if (!window.uniformPane) {
             window.uniformPane = new Pane({ title: "Shader Uniforms" });
             window.uniformPane.registerPlugin(TweakpaneFileImportPlugin);
@@ -347,29 +394,8 @@ export default function threeUniformGuiPlugin(): Plugin {
                 if(t) clearTimeout(t)
                 btn.title =  'Coping...'
                 window.uniformPane.refresh()
-
-                const paneState =  window.uniformPane.exportState()
                 
-                const extractValues = (children, accumulator) => {
-                  return children.reduce((acc, value) => {
-                    if(value.label){
-                      if(value.binding.value?.isColor){
-                        acc[value.label] = Number(JSON.stringify(value.binding.value)).toString(16);
-                        while (acc[value.label].length < 6) {
-                          acc[value.label] = "0" + acc[value.label];
-                        }
-                      }else{
-                        acc[value.label] = value.binding.value
-                      }
-                    }
-                    if(value.children){
-                      acc[value.title] = extractValues(value.children, {})
-                    }
-                    return acc;
-                  }, accumulator)
-                }
-                
-                const uniformState = extractValues(paneState.children, {});
+                const uniformState = window.uniformSerializer()
                 navigator.clipboard.writeText(JSON.stringify(uniformState))
                 btn.title =  'Copied!!'
                 window.uniformPane.refresh()
@@ -380,6 +406,53 @@ export default function threeUniformGuiPlugin(): Plugin {
                 }, 1000)
               });
           }
+              if(!window.uniformSerializer){
+                window.uniformSerializer = () => {
+                  const paneState =  window.uniformPane.exportState()
+                
+                  const extractValues = (children, accumulator) => {
+                    return children.reduce((acc, value) => {
+                      if(value.label){
+                        if(value.binding.value?.isColor){
+                          const color = {
+                            r: value.binding.value.r,
+                            g: value.binding.value.g,
+                            b: value.binding.value.b,
+                          }
+                          acc[value.label] = JSON.stringify(color);
+                        }else{
+                          acc[value.label] = value.binding.value
+                        }
+                      }
+                      if(value.children){
+                        acc[value.title] = extractValues(value.children, {})
+                      }
+                      return acc;
+                    }, accumulator)
+                  }
+                
+                  return extractValues(paneState.children, {});
+                }
+                
+                window.uniformSaveDebounced = () => {
+                  window.saveTimerId && clearTimeout(window.saveTimerId)
+                  window.saveTimerId = setTimeout(() => {
+                    const uniformState = window.uniformSerializer();
+                    localStorage.setItem("threeUniformGuiPluginState", JSON.stringify(uniformState))
+                  }, 500)
+                }
+              }
+              if(${persistent}){
+                 const savedState = localStorage.getItem("threeUniformGuiPluginState")
+                 if(savedState){
+                  try{
+                    const parsedState = JSON.parse(savedState)
+                    window.initialUniformState = parsedState
+                  }catch(err){
+                  
+                  }
+                 }
+              }
               let folder = window.uniformPane.children.find(child => child.title === 'uniform_${fileName}');
               if (folder) {
                 folder.dispose();

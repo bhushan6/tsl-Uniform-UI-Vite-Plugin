@@ -15,7 +15,7 @@
   "dependencies": {
     "@types/three": "^0.173.0",
     "three": "^0.173.0",
-    "tsl-uniform-ui-vite-plugin": "^0.4.1",
+    "tsl-uniform-ui-vite-plugin": "^0.5.0",
     "tweakpane-plugin-file-import": "^1.1.1",
     "@tweakpane/core": "^2.0.5",
     "tweakpane": "^4.0.5"
