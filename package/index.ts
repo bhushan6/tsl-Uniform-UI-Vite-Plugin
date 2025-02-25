@@ -3,7 +3,7 @@ import * as parser from "@babel/parser";
 import traverseDefault from "@babel/traverse";
 import type { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-
+import { uniformPaneClass } from "./UIController";
 const pathUtils = {
   basename: (filePath: string, ext?: string): string => {
     // Extract file name from path
@@ -107,18 +107,16 @@ function getUniformType(
   if (t.isBooleanLiteral(valueNode)) return "boolean";
   if (t.isMemberExpression(valueNode)) return "number";
 
-  // console.log(t.isAccessor(valueNode));
-
   return null;
 }
 const addSubfolder = (folderName: string, subfolderInit: string) => {
   return `{
-    let folder = window.uniformPane.children.find(child => child.title === '${folderName}');
-    if(folder){
-      ${subfolderInit}
-    }else{
+    let folder = window.uniformPane.pane.children.find(child => child.title === '${folderName}');
+      if(folder){
+        ${subfolderInit}
+      }else{
         
-    }
+      }
     }
   `;
 };
@@ -133,17 +131,15 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
-          if(window.initialUniformState){
-            if(window.initialUniformState.${folderName}?.${uniform.name}){
-              console.log(window.initialUniformState.${folderName}.${uniform.name})
-              ${uniform.name}.value = window.initialUniformState.${folderName}.${uniform.name}
+          if(window.uniformPane.initialUniformState){
+            if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
+              ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
             }
           }
           folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}'
           }).on("change", () => {
-              console.log(${uniform.name}.value)
-              ${persistent} && window.uniformSaveDebounced()
+              ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
       `
       );
@@ -152,17 +148,16 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
-          if(window.initialUniformState){
-            if(window.initialUniformState.${folderName}?.${uniform.name}){
-              console.log(window.initialUniformState.${folderName}.${uniform.name})
-              ${uniform.name}.value = window.initialUniformState.${folderName}.${uniform.name}
+          if(window.uniformPane.initialUniformState){
+            if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
+              ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
             }
           }
         folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}',
             step: 0.01
           }).on("change", () => {
-              ${persistent} && window.uniformSaveDebounced()
+              ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
       `
       );
@@ -171,11 +166,9 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
-        if(window.initialUniformState){
-            if(window.initialUniformState.${folderName}?.${uniform.name}){
-              console.log(window.initialUniformState.${folderName}.${uniform.name})
-              
-              const color = JSON.parse(window.initialUniformState.${folderName}.${uniform.name} )
+        if(window.uniformPane.initialUniformState){
+            if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
+              const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
               ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
             }
         }
@@ -185,7 +178,7 @@ function generateControl(
             picker: 'inline',
             color: {type: 'float'},
         }).on("change", () => {
-              ${persistent} && window.uniformSaveDebounced()
+              ${persistent} && window.uniformPane.uniformSaveDebounced()
         });
       `
       );
@@ -210,11 +203,9 @@ function generateControl(
         ${axes
           .map((axis) => {
             return `
-             if(window.initialUniformState){
-              if(window.initialUniformState.${folderName}?.${uniform.name}){
-                console.log(window.initialUniformState.${folderName}.${uniform.name})
-                
-                const value = window.initialUniformState.${folderName}.${uniform.name}
+             if(window.uniformPane.initialUniformState){
+              if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
+                const value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
                 ${uniform.name}.value.${axis} = value.${axis}
               }
             }
@@ -222,7 +213,7 @@ function generateControl(
             label: '${axis}',
             step: 0.01
           }).on("change", () => {
-            ${persistent} &&  window.uniformSaveDebounced()
+            ${persistent} &&  window.uniformPane.uniformSaveDebounced()
           });
         `;
           })
@@ -252,7 +243,7 @@ function generateControl(
             const blobUrl = URL.createObjectURL(imageFile);
             const texture = new THREE.TextureLoader().load(blobUrl);
             ${uniform.name}.value = texture;
-            ${persistent} && window.uniformSaveDebounced()
+            ${persistent} && window.uniformPane.uniformSaveDebounced()
           });`
       );
     default:
@@ -380,85 +371,19 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
           modifiedCode.slice(0, lastImportIndex) +
           `
           if (!window.uniformPane) {
-            window.uniformPane = new Pane({ title: "Shader Uniforms" });
-            window.uniformPane.registerPlugin(TweakpaneFileImportPlugin);
-
-             const btn = window.uniformPane.addButton({
-                title: 'Copy configs',
-              });
-
-              
-              let t;
-
-              btn.on('click', () => {
-                if(t) clearTimeout(t)
-                btn.title =  'Coping...'
-                window.uniformPane.refresh()
-                
-                const uniformState = window.uniformSerializer()
-                navigator.clipboard.writeText(JSON.stringify(uniformState))
-                btn.title =  'Copied!!'
-                window.uniformPane.refresh()
-
-                t = setTimeout(() => {
-                  btn.title =  'Copy configs'
-                  window.uniformPane.refresh()
-                }, 1000)
-              });
+            ${uniformPaneClass}
+            window.uniformPane = new UniformUIController(${persistent});
+            window.uniformPane.pane.registerPlugin(TweakpaneEssentialsPlugin);
+            window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
+            window.uniformPane.setupUndoRedoButtons()
           }
-              if(!window.uniformSerializer){
-                window.uniformSerializer = () => {
-                  const paneState =  window.uniformPane.exportState()
-                
-                  const extractValues = (children, accumulator) => {
-                    return children.reduce((acc, value) => {
-                      if(value.label){
-                        if(value.binding.value?.isColor){
-                          const color = {
-                            r: value.binding.value.r,
-                            g: value.binding.value.g,
-                            b: value.binding.value.b,
-                          }
-                          acc[value.label] = JSON.stringify(color);
-                        }else{
-                          acc[value.label] = value.binding.value
-                        }
-                      }
-                      if(value.children){
-                        acc[value.title] = extractValues(value.children, {})
-                      }
-                      return acc;
-                    }, accumulator)
-                  }
-                
-                  return extractValues(paneState.children, {});
-                }
-                
-                window.uniformSaveDebounced = () => {
-                  window.saveTimerId && clearTimeout(window.saveTimerId)
-                  window.saveTimerId = setTimeout(() => {
-                    const uniformState = window.uniformSerializer();
-                    localStorage.setItem("threeUniformGuiPluginState", JSON.stringify(uniformState))
-                  }, 500)
-                }
-              }
-              if(${persistent}){
-                 const savedState = localStorage.getItem("threeUniformGuiPluginState")
-                 if(savedState){
-                  try{
-                    const parsedState = JSON.parse(savedState)
-                    window.initialUniformState = parsedState
-                  }catch(err){
-                  
-                  }
-                 }
-              }
-              let folder = window.uniformPane.children.find(child => child.title === 'uniform_${fileName}');
-              if (folder) {
-                folder.dispose();
-              }
+          
+          let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');
+          if (folder) {
+            folder.dispose();
+          }
 
-              window.uniformPane.addFolder({ title: 'uniform_${fileName}'});
+          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'});
 
           ` +
           modifiedCode.slice(lastImportIndex);
@@ -466,8 +391,9 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
         if (!paneExists) {
           modifiedCode =
             `
-          import { Pane } from 'tweakpane';\n
-          import * as TweakpaneFileImportPlugin from 'tweakpane-plugin-file-import';\n
+            import { Pane } from 'tweakpane';
+            import * as TweakpaneEssentialsPlugin from '@tweakpane/plugin-essentials';
+            import * as TweakpaneFileImportPlugin from 'tweakpane-plugin-file-import';
           ` + modifiedCode;
         }
 

@@ -33,31 +33,31 @@ const randomVector4 = () => new Vector4(
 );
 
 // Create random uniforms
-const baseColor = uniform(randomColor());
-const highlightColor = uniform(randomColor());
-const ambientColor = uniform(randomColor());
+// const baseColor = uniform(randomColor());
+// const highlightColor = uniform(randomColor());
+// const ambientColor = uniform(randomColor());
 
-const opacity = uniform(Math.random());
-const shininess = uniform(Math.random() * 100);
-const metalness = uniform(Math.random());
-const roughness = uniform(Math.random());
+// const opacity = uniform(Math.random());
+// const shininess = uniform(Math.random() * 100);
+// const metalness = uniform(Math.random());
+// const roughness = uniform(Math.random());
 
-const objectScale = uniform(Math.random() * 3);
-const objectPosition2 = uniform(randomVector3(), "vec3");
-const objectRotation2 = uniform(randomVector3(), "vec3");
+// const objectScale = uniform(Math.random() * 3);
+// const objectPosition2 = uniform(randomVector3(), "vec3");
+// const objectRotation2 = uniform(randomVector3(), "vec3");
 
-const noiseScale = uniform(Math.random() * 5);
-const noiseStrength = uniform(Math.random() * 2);
+// const noiseScale = uniform(Math.random() * 5);
+// const noiseStrength = uniform(Math.random() * 2);
 
-const uvOffset = uniform(randomVector2());
-const timeScale = uniform(Math.random() * 2);
+// const uvOffset = uniform(randomVector2());
+// const timeScale = uniform(Math.random() * 2);
 
-const clipPlane2 = uniform(randomVector4(), "vec4");
-const useTexture = uniform(Math.random() > 0.5);
-const useNormalMap = uniform(Math.random() > 0.5);
+// const clipPlane2 = uniform(randomVector4(), "vec4");
+// const useTexture = uniform(Math.random() > 0.5);
+// const useNormalMap = uniform(Math.random() > 0.5);
 
-const lightIntensity = uniform(Math.random() * 5);
-const lightPosition = uniform(randomVector3());
-const lightColor = uniform(randomColor());
+// const lightIntensity = uniform(Math.random() * 5);
+// const lightPosition = uniform(randomVector3());
+// const lightColor = uniform(randomColor());
 
 new Experience(canvas).startRendering();

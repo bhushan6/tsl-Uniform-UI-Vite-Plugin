@@ -161,7 +161,7 @@ export class Experience {
     const textureUniform = texture(tex);
  
     boxMaterial.colorNode = Fn(() => {
-      return textureUniform;
+      return mix(color1, color2, progress);
     })();
     boxMaterial.positionNode = Fn(() => {
       return positionGeometry.add(position).mul(scale);

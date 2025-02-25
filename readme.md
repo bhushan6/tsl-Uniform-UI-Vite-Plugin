@@ -14,12 +14,13 @@ A Vite plugin that automatically generates GUI controls for Three.js shader unif
   - Vector2/3/4
   - Texture
 - Export Configs
-- Presitent
+- Presistent configs
+- undo/redo
 
 ## Installation
 
 ```bash
-npm install tsl-uniform-ui-vite-plugin @tweakpane/core tweakpane tweakpane-plugin-file-import
+npm install tsl-uniform-ui-vite-plugin @tweakpane/core tweakpane @tweakpane/plugin-essentials tweakpane-plugin-file-import
 ```
 
 ## Usage
