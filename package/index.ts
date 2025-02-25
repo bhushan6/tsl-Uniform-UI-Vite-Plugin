@@ -135,6 +135,9 @@ function generateControl(
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
             }
+          }else{
+            const uniformState = window.uniformPane.uniformStateSerializer();
+            window.uniformPane.currentState = uniformState
           }
           folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}'
@@ -152,6 +155,9 @@ function generateControl(
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
             }
+          }else{
+            const uniformState = window.uniformPane.uniformStateSerializer();
+            window.uniformPane.currentState = uniformState
           }
         folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}',
@@ -171,6 +177,9 @@ function generateControl(
               const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
               ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
             }
+        }else{
+          const uniformState = window.uniformPane.uniformStateSerializer();
+          window.uniformPane.currentState = uniformState
         }
         folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}',
@@ -203,11 +212,14 @@ function generateControl(
         ${axes
           .map((axis) => {
             return `
-             if(window.uniformPane.initialUniformState){
+            if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                 const value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
                 ${uniform.name}.value.${axis} = value.${axis}
               }
+            }else{
+              const uniformState = window.uniformPane.uniformStateSerializer();
+              window.uniformPane.currentState = uniformState
             }
           ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
             label: '${axis}',
@@ -383,7 +395,7 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
             folder.dispose();
           }
 
-          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'});
+          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'})
 
           ` +
           modifiedCode.slice(lastImportIndex);

@@ -14,19 +14,16 @@ class UniformUIController {
           this.currentState = this.initialUniformState
         } catch (err) {
           console.error(err);
-          const uniformState = this.uniformStateSerializer();
-          this.currentState = uniformState
         }
       }
-    }else{
-      const uniformState = this.uniformStateSerializer();
-      this.currentState = uniformState
     }
 
     const presets = localStorage.getItem("threeUniformGuiPluginPresets");
     if(presets) {
       this.presets = JSON.parse(presets)
     }
+    
+    
   }
 
   setupUI(){
@@ -165,7 +162,7 @@ class UniformUIController {
               child.binding.value = value
             }
           }else if(child.children){
-            applyValues(child.children, params[child.title])
+            applyValues(child.children, params[child.title] || {})
           }
         }
       })
@@ -238,6 +235,7 @@ class UniformUIController {
 
   uniformSaveDebounced = () => {
     this.saveTimerId && clearTimeout(this.saveTimerId);
+    console.log(this.undoRedoInProgress)
     if(this.undoRedoInProgress){
       const uniformState = this.uniformStateSerializer();
       this.persistent &&
@@ -250,9 +248,10 @@ class UniformUIController {
     this.saveTimerId = setTimeout(() => {
       const uniformState = this.uniformStateSerializer();
       if(this.currentState){
-        this.undoStack.push(this.currentState);
+        this.undoStack.push({...this.currentState});
       }
       this.currentState = uniformState
+      console.log(this.undoStack)
       this.refreshUndoRedoController()
       this.persistent &&
         localStorage.setItem(
