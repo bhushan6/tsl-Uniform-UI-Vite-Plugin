@@ -4,6 +4,20 @@ import traverseDefault from "@babel/traverse";
 import type { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { uniformPaneClass } from "./UIController";
+
+// Plugin configuration interface
+interface ThreeUniformGuiOptions {
+  persistent?: boolean;
+  devOnly?: boolean; // New option to control if the plugin only works in dev mode
+}
+
+// Default options
+const defaultOptions: ThreeUniformGuiOptions = {
+  persistent: false,
+  devOnly: true, // Default to only work in dev mode
+};
+
+// Rest of the utility functions...
 const pathUtils = {
   basename: (filePath: string, ext?: string): string => {
     // Extract file name from path
@@ -54,10 +68,12 @@ const debug = {
     console.log("\x1b[31m%s\x1b[0m", "[three-uniform-gui][error]", ...args),
 };
 
+// All the existing type detection and control generation functions...
 function getUniformType(
   valueNode: t.Node,
   typeNode?: t.Node | null
 ): UniformInfo["type"] | null {
+  // Existing implementation...
   if (typeNode && t.isStringLiteral(typeNode)) {
     const explicitType = typeNode.value.toLowerCase();
     switch (explicitType) {
@@ -109,6 +125,7 @@ function getUniformType(
 
   return null;
 }
+
 const addSubfolder = (folderName: string, subfolderInit: string) => {
   return `{
     let folder = window.uniformPane.pane.children.find(child => child.title === '${folderName}');
@@ -126,6 +143,8 @@ function generateControl(
   folderName: string,
   persistent?: boolean
 ): string {
+  // Existing implementation...
+  // [All the existing control generation code here]
   switch (uniform.type) {
     case "boolean":
       return addSubfolder(
@@ -147,6 +166,7 @@ function generateControl(
       `
       );
 
+    // [All other cases]
     case "number":
       return addSubfolder(
         folderName,
@@ -167,105 +187,119 @@ function generateControl(
           });
       `
       );
-
-    case "color":
-      return addSubfolder(
-        folderName,
-        `
-        if(window.uniformPane.initialUniformState){
-            if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
-              const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
-              ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
-            }
-        }else{
-          const uniformState = window.uniformPane.uniformStateSerializer();
-          window.uniformPane.currentState = uniformState
-        }
-        folder.addBinding(${uniform.name}, 'value', {
-            label: '${uniform.name}',
-            view: 'color',
-            picker: 'inline',
-            color: {type: 'float'},
-        }).on("change", () => {
-              ${persistent} && window.uniformPane.uniformSaveDebounced()
-        });
-      `
-      );
-
-    case "vector2":
-    case "vector3":
-    case "vector4":
-      const axes =
-        uniform.type === "vector2"
-          ? ["x", "y"]
-          : uniform.type === "vector3"
-          ? ["x", "y", "z"]
-          : ["x", "y", "z", "w"];
-
-      return addSubfolder(
-        folderName,
-        `
-        const ${uniform.name}Folder = folder.addFolder({
-          title: '${uniform.name}'
-        }) 
-        
-        ${axes
-          .map((axis) => {
-            return `
-            if(window.uniformPane.initialUniformState){
+      case "color":
+        return addSubfolder(
+          folderName,
+          `
+          if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
-                const value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
-                ${uniform.name}.value.${axis} = value.${axis}
+                const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
+                ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
               }
-            }else{
-              const uniformState = window.uniformPane.uniformStateSerializer();
-              window.uniformPane.currentState = uniformState
-            }
-          ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
-            label: '${axis}',
-            step: 0.01
-          }).on("change", () => {
-            ${persistent} &&  window.uniformPane.uniformSaveDebounced()
-          });
-        `;
-          })
-          .join("\n")}
-      `
-      );
-    case "texture":
-      return addSubfolder(
-        folderName,
-        ` const ${uniform.name}Params = {
-            file: "",
+          }else{
+            const uniformState = window.uniformPane.uniformStateSerializer();
+            window.uniformPane.currentState = uniformState
           }
+          folder.addBinding(${uniform.name}, 'value', {
+              label: '${uniform.name}',
+              view: 'color',
+              picker: 'inline',
+              color: {type: 'float'},
+          }).on("change", () => {
+                ${persistent} && window.uniformPane.uniformSaveDebounced()
+          });
+        `
+        );
+  
+      case "vector2":
+      case "vector3":
+      case "vector4":
+        const axes =
+          uniform.type === "vector2"
+            ? ["x", "y"]
+            : uniform.type === "vector3"
+            ? ["x", "y", "z"]
+            : ["x", "y", "z", "w"];
+  
+        return addSubfolder(
+          folderName,
+          `
           const ${uniform.name}Folder = folder.addFolder({
             title: '${uniform.name}'
-          });
-          ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
-            view: "file-input",
-            lineCount: 3,
-            filetypes: [".png", ".jpg"],
-            invalidFiletypeMessage: "We can't accept those filetypes!",
-          })
-          .on("change", (ev) => {
-            if (!ev.value) {
-              return;
+          }) 
+          
+          ${axes
+            .map((axis) => {
+              return `
+              if(window.uniformPane.initialUniformState){
+                if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
+                  const value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
+                  ${uniform.name}.value.${axis} = value.${axis}
+                }
+              }else{
+                const uniformState = window.uniformPane.uniformStateSerializer();
+                window.uniformPane.currentState = uniformState
+              }
+            ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
+              label: '${axis}',
+              step: 0.01
+            }).on("change", () => {
+              ${persistent} &&  window.uniformPane.uniformSaveDebounced()
+            });
+          `;
+            })
+            .join("\n")}
+        `
+        );
+      case "texture":
+        return addSubfolder(
+          folderName,
+          ` const ${uniform.name}Params = {
+              file: "",
             }
-            const imageFile = ev.value;
-            const blobUrl = URL.createObjectURL(imageFile);
-            const texture = new THREE.TextureLoader().load(blobUrl);
-            ${uniform.name}.value = texture;
-            ${persistent} && window.uniformPane.uniformSaveDebounced()
-          });`
-      );
-    default:
-      return "";
+            const ${uniform.name}Folder = folder.addFolder({
+              title: '${uniform.name}'
+            });
+            ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
+              view: "file-input",
+              lineCount: 3,
+              filetypes: [".png", ".jpg"],
+              invalidFiletypeMessage: "We can't accept those filetypes!",
+            })
+            .on("change", (ev) => {
+              if (!ev.value) {
+                return;
+              }
+              const imageFile = ev.value;
+              const blobUrl = URL.createObjectURL(imageFile);
+              const texture = new THREE.TextureLoader().load(blobUrl);
+              ${uniform.name}.value = texture;
+              ${persistent} && window.uniformPane.uniformSaveDebounced()
+            });`
+        );
+      default:
+        return "";
   }
 }
 
-export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
+// Updated plugin function to accept options
+export default function threeUniformGuiPlugin(options?: ThreeUniformGuiOptions | boolean): Plugin {
+  // Handle backward compatibility - if a boolean is passed, treat it as the persistent option
+  const opts = typeof options === 'boolean' 
+    ? { ...defaultOptions, persistent: options } 
+    : { ...defaultOptions, ...options };
+
+    debug.log("Options:", opts);
+
   return {
     name: "three-uniform-gui",
+    apply: (config, { command }) => {
+      // Only apply in development mode if devOnly is true
+      if (opts.devOnly && command !== 'serve') {
+        return false;
+      }
+      return true;
+    },
     transform(code, id) {
       if (!id.match(/\.[jt]sx?$/)) return;
 
@@ -282,6 +316,7 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
 
         traverse(ast, {
           VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
+            // Existing implementation...
             if (
               t.isCallExpression(path.node.init) &&
               t.isIdentifier(path.node.init.callee) &&
@@ -370,7 +405,7 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
           const control = generateControl(
             uniform,
             `uniform_${fileName}`,
-            persistent
+            opts.persistent
           );
           modifiedCode =
             modifiedCode.slice(0, uniform.position) +
@@ -384,10 +419,10 @@ export default function threeUniformGuiPlugin(persistent?: boolean): Plugin {
           `
           if (!window.uniformPane) {
             ${uniformPaneClass}
-            window.uniformPane = new UniformUIController(${persistent});
+            window.uniformPane = new UniformUIController(${opts.persistent});
             window.uniformPane.pane.registerPlugin(TweakpaneEssentialsPlugin);
             window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
-             window.uniformPane.setupUI()
+            window.uniformPane.setupUI()
           }
           
           let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');

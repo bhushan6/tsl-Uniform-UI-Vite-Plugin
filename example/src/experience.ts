@@ -4,7 +4,6 @@ import {
   mix,
   positionGeometry,
   remap,
-  // texture,
   uniform,
 } from "three/tsl";
 import * as THREE from "three/webgpu";

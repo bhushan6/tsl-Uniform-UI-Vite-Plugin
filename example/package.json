@@ -13,11 +13,11 @@
     "vite": "^6.1.0"
   },
   "dependencies": {
-    "@tweakpane/core": "^2.0.5",
-    "@tweakpane/plugin-essentials": "^0.2.1",
     "@types/three": "^0.173.0",
     "three": "^0.173.0",
-    "tsl-uniform-ui-vite-plugin": "^0.7.1",
+    "@tweakpane/core": "^2.0.5",
+    "@tweakpane/plugin-essentials": "^0.2.1",
+    "tsl-uniform-ui-vite-plugin": "^0.7.2",
     "tweakpane": "^4.0.5",
     "tweakpane-plugin-file-import": "^1.1.1"
   }
