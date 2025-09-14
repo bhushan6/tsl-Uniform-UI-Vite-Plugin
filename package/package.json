@@ -20,7 +20,8 @@
     "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepare": "vite build"
   },
   "license": "MIT",
   "files": [
