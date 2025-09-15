@@ -1,11 +1,5 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import {
-  Fn,
-  mix,
-  positionGeometry,
-  remap,
-  uniform,
-} from "three/tsl";
+import { Fn, mix, positionGeometry, remap, uniform } from "three/tsl";
 import * as THREE from "three/webgpu";
 
 export class Experience {
@@ -100,7 +94,10 @@ export class Experience {
     const color2 = uniform(new THREE.Color(0x00ff00));
     // const progress = uniform(0);
 
+    // @range: { min: 0.1, max: 3, step: 0.1 }
     const scale = uniform(1, "float");
+
+    // @range: { min: -2, max: 2, step: 0.1 }
     const position = uniform(new THREE.Vector3(0, 0, 0), "vec3");
 
     // const tex = new THREE.TextureLoader().load("/uv.png");

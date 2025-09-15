@@ -57,6 +57,11 @@ interface UniformInfo {
     | "matrix4"
     | "texture";
   position: number;
+  range?: {
+    min?: number;
+    max?: number;
+    step?: number;
+  };
 }
 
 const debug = {
@@ -67,6 +72,36 @@ const debug = {
   error: (...args: any[]) =>
     console.log("\x1b[31m%s\x1b[0m", "[three-uniform-gui][error]", ...args),
 };
+
+// Function to parse range configuration from comments
+function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
+  if (!comments) return undefined;
+
+  for (const comment of comments) {
+    // Supported comment format:
+    // @range: { min: 0, max: 2, step: 0.1 }
+    const match = comment.value.match(/@range:\s*(\{[\s\S]*?\})/);
+    if (match) {
+      let configStr = match[1];
+      try {
+        return JSON.parse(configStr);
+      } catch (e) {
+        // Try adding quotes to unquoted keys
+        const quotedStr = configStr.replace(
+          /([{,]\s*)([a-zA-Z_]\w*)\s*:/g,
+          '$1"$2":'
+        );
+        try {
+          return JSON.parse(quotedStr);
+        } catch (e2) {
+          debug.warn("Invalid uniform range configuration:", configStr);
+          return undefined;
+        }
+      }
+    }
+  }
+  return undefined;
+}
 
 // All the existing type detection and control generation functions...
 function getUniformType(
@@ -168,6 +203,14 @@ function generateControl(
 
     // [All other cases]
     case "number":
+      // Build range options string
+      const rangeOptions = uniform.range
+        ? Object.entries(uniform.range)
+            .filter(([_, value]) => value !== undefined)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(",\n            ")
+        : "step: 0.01";
+
       return addSubfolder(
         folderName,
         `
@@ -181,16 +224,16 @@ function generateControl(
           }
         folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}',
-            step: 0.01
+            ${rangeOptions}
           }).on("change", () => {
               ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
       `
       );
-      case "color":
-        return addSubfolder(
-          folderName,
-          `
+    case "color":
+      return addSubfolder(
+        folderName,
+        `
           if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                 const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
@@ -209,21 +252,29 @@ function generateControl(
                 ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
         `
-        );
-  
-      case "vector2":
-      case "vector3":
-      case "vector4":
-        const axes =
-          uniform.type === "vector2"
-            ? ["x", "y"]
-            : uniform.type === "vector3"
-            ? ["x", "y", "z"]
-            : ["x", "y", "z", "w"];
-  
-        return addSubfolder(
-          folderName,
-          `
+      );
+
+    case "vector2":
+    case "vector3":
+    case "vector4":
+      const axes =
+        uniform.type === "vector2"
+          ? ["x", "y"]
+          : uniform.type === "vector3"
+          ? ["x", "y", "z"]
+          : ["x", "y", "z", "w"];
+
+      // Build range options string for vector components
+      const vectorRangeOptions = uniform.range
+        ? Object.entries(uniform.range)
+            .filter(([_, value]) => value !== undefined)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(",\n              ")
+        : "step: 0.01";
+
+      return addSubfolder(
+        folderName,
+        `
           const ${uniform.name}Folder = folder.addFolder({
             title: '${uniform.name}'
           }) 
@@ -242,7 +293,7 @@ function generateControl(
               }
             ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
               label: '${axis}',
-              step: 0.01
+              ${vectorRangeOptions}
             }).on("change", () => {
               ${persistent} &&  window.uniformPane.uniformSaveDebounced()
             });
@@ -250,11 +301,11 @@ function generateControl(
             })
             .join("\n")}
         `
-        );
-      case "texture":
-        return addSubfolder(
-          folderName,
-          ` const ${uniform.name}Params = {
+      );
+    case "texture":
+      return addSubfolder(
+        folderName,
+        ` const ${uniform.name}Params = {
               file: "",
             }
             const ${uniform.name}Folder = folder.addFolder({
@@ -276,26 +327,30 @@ function generateControl(
               ${uniform.name}.value = texture;
               ${persistent} && window.uniformPane.uniformSaveDebounced()
             });`
-        );
-      default:
-        return "";
+      );
+    default:
+      return "";
   }
 }
 
 // Updated plugin function to accept options
-export default function threeUniformGuiPlugin(options?: ThreeUniformGuiOptions | boolean): Plugin {
+export default function threeUniformGuiPlugin(
+  options?: ThreeUniformGuiOptions | boolean
+): Plugin {
   // Handle backward compatibility - if a boolean is passed, treat it as the persistent option
-  const opts = typeof options === 'boolean' 
-    ? { ...defaultOptions, persistent: options } 
-    : { ...defaultOptions, ...options };
+  const opts =
+    typeof options === "boolean"
+      ? { ...defaultOptions, persistent: options }
+      : { ...defaultOptions, ...options };
 
-    debug.log("Options:", opts);
+  debug.log("Options:", opts);
 
   return {
     name: "three-uniform-gui",
+    enforce: "pre",
     apply: (config, { command }) => {
       // Only apply in development mode if devOnly is true
-      if (opts.devOnly && command !== 'serve') {
+      if (opts.devOnly && command !== "serve") {
         return false;
       }
       return true;
@@ -309,10 +364,13 @@ export default function threeUniformGuiPlugin(options?: ThreeUniformGuiOptions |
         const ast = parser.parse(code, {
           sourceType: "module",
           plugins: ["typescript", "jsx"],
-        });
+          comments: true,
+          attachComments: true, // Enable comment parsing
+        } as any);
 
         const uniforms: UniformInfo[] = [];
         let paneExists = false;
+        const fileComments: any[] = (ast as any).comments || [];
 
         traverse(ast, {
           VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
@@ -332,6 +390,7 @@ export default function threeUniformGuiPlugin(options?: ThreeUniformGuiOptions |
                 if (
                   binding &&
                   binding.kind !== "module" &&
+                  t.isVariableDeclarator(binding.path.node) &&
                   binding.path.node.init
                 ) {
                   const initNode = binding.path.node.init;
@@ -340,10 +399,36 @@ export default function threeUniformGuiPlugin(options?: ThreeUniformGuiOptions |
               }
 
               if (type && path.node.end) {
+                // Parse comments near this declaration for range configuration
+                const nodeStart = (path.node.start as number) || 0;
+                // Find the nearest preceding comment with minimal separation
+                let nearestComment: any | undefined;
+                for (let i = fileComments.length - 1; i >= 0; i -= 1) {
+                  const c = fileComments[i];
+                  if (typeof c.end === "number" && c.end <= nodeStart) {
+                    const between = code.slice(c.end, nodeStart);
+                    // Allow at most one newline and only whitespace between comment and node
+                    const newlineCount = (between.match(/\n/g) || []).length;
+                    if (/^[\s;]*$/.test(between) && newlineCount <= 1) {
+                      nearestComment = c;
+                      break;
+                    }
+                    // If there is too much separation, stop searching further
+                    if (newlineCount > 1) break;
+                  }
+                }
+                const candidateComments = [
+                  ...(nearestComment ? [nearestComment] : []),
+                  ...((path.parent as any).leadingComments || []),
+                  ...((path.node as any).leadingComments || []),
+                ];
+                const rangeConfig = parseRangeComment(candidateComments);
+
                 uniforms.push({
                   name: path.node.id.name,
                   type,
                   position: path.node.end,
+                  range: rangeConfig,
                 });
               }
             }
