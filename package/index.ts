@@ -78,10 +78,9 @@ function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
   if (!comments) return undefined;
 
   for (const comment of comments) {
-    // Support multiple comment formats:
-    // @uniform-range: { min: 0, max: 2, step: 0.1 }
+    // Supported comment format:
     // @range: { min: 0, max: 2, step: 0.1 }
-    const match = comment.value.match(/@(?:uniform-)?range:\s*(\{[\s\S]*?\})/);
+    const match = comment.value.match(/@range:\s*(\{[\s\S]*?\})/);
     if (match) {
       let configStr = match[1];
       try {

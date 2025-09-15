@@ -116,13 +116,6 @@ options:
 - `max`: Maximum value for the slider
 - `step`: Step size for the slider (default: 0.01)
 
-You can also use the alternative syntax:
-
-```javascript
-// @uniform-range: { min: 0, max: 2, step: 0.1 }
-const brightness = uniform(1.0);
-```
-
 ## Caveat
 
 ### Passing Types to the uniform Function
