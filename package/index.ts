@@ -4,17 +4,20 @@ import traverseDefault from "@babel/traverse";
 import type { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { uniformPaneClass } from "./UIController";
+import micromatch from "micromatch";
 
 // Plugin configuration interface
 interface ThreeUniformGuiOptions {
   persistent?: boolean;
   devOnly?: boolean; // New option to control if the plugin only works in dev mode
+  exclude?: string[];
 }
 
 // Default options
 const defaultOptions: ThreeUniformGuiOptions = {
   persistent: false,
   devOnly: true, // Default to only work in dev mode
+  exclude: [],
 };
 
 // Rest of the utility functions...
@@ -72,6 +75,11 @@ const debug = {
   error: (...args: any[]) =>
     console.log("\x1b[31m%s\x1b[0m", "[three-uniform-gui][error]", ...args),
 };
+
+function hasNoGuiComment(comments: any[]): boolean {
+  if (!comments) return false;
+  return comments.some((comment) => comment.value.includes("@nogui"));
+}
 
 // Function to parse range configuration from comments
 function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
@@ -358,6 +366,15 @@ export default function threeUniformGuiPlugin(
     transform(code, id) {
       if (!id.match(/\.[jt]sx?$/)) return;
 
+      if (
+        opts.exclude &&
+        opts.exclude.length > 0 &&
+        micromatch.isMatch(id, opts.exclude)
+      ) {
+        debug.log("Skipping file due to exclude option:", id);
+        return;
+      }
+
       debug.log("Processing file:", id);
 
       try {
@@ -371,6 +388,11 @@ export default function threeUniformGuiPlugin(
         const uniforms: UniformInfo[] = [];
         let paneExists = false;
         const fileComments: any[] = (ast as any).comments || [];
+
+        if (fileComments.some((c) => c.value.includes("@no-gui-file"))) {
+          debug.log("Skipping file due to @no-gui-file comment");
+          return;
+        }
 
         traverse(ast, {
           VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
@@ -421,7 +443,13 @@ export default function threeUniformGuiPlugin(
                   ...(nearestComment ? [nearestComment] : []),
                   ...((path.parent as any).leadingComments || []),
                   ...((path.node as any).leadingComments || []),
+                  ...((path.node as any).trailingComments || []),
                 ];
+
+                if (hasNoGuiComment(candidateComments)) {
+                  return;
+                }
+
                 const rangeConfig = parseRangeComment(candidateComments);
 
                 uniforms.push({
@@ -440,6 +468,16 @@ export default function threeUniformGuiPlugin(
               path.node.init.callee.name === "texture" &&
               path.node.end
             ) {
+              const candidateComments = [
+                ...((path.parent as any).leadingComments || []),
+                ...((path.node as any).leadingComments || []),
+                ...((path.node as any).trailingComments || []),
+              ];
+
+              if (hasNoGuiComment(candidateComments)) {
+                return;
+              }
+              
               uniforms.push({
                 name: path.node.id.name,
                 type: "texture",
