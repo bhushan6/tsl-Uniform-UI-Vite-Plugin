@@ -63,6 +63,7 @@ export default {
     threeUniformGui({
       persistent: true, // Save configurations in localStorage
       devOnly: true, // Only active in development mode (default)
+      presets: true, // Enable the presets feature
     }),
   ],
 };
@@ -72,6 +73,7 @@ export default {
 | ------------ | ------- | ------- | ------------------------------------------ |
 | `persistent` | boolean | `false` | Save UI state in localStorage              |
 | `devOnly`    | boolean | `true`  | Only enable the plugin in development mode |
+| `presets`    | boolean | `false` | Enable the presets feature                 |
 
 For backward compatibility, you can still use the old configuration style:
 
