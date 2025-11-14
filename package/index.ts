@@ -78,7 +78,12 @@ const debug = {
 
 function hasNoGuiComment(comments: any[]): boolean {
   if (!comments) return false;
-  return comments.some((comment) => comment.value.includes("@nogui"));
+  return comments.some((comment) => comment.value.includes("@no-gui"));
+}
+
+function hasGuiComment(comments: any[]): boolean {
+  if (!comments) return false;
+  return comments.some((comment) => comment.value.includes("@gui"));
 }
 
 // Function to parse range configuration from comments
@@ -97,7 +102,7 @@ function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
         // Try adding quotes to unquoted keys
         const quotedStr = configStr.replace(
           /([{,]\s*)([a-zA-Z_]\w*)\s*:/g,
-          '$1"$2":'
+          '$1"$2":',
         );
         try {
           return JSON.parse(quotedStr);
@@ -114,7 +119,7 @@ function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
 // All the existing type detection and control generation functions...
 function getUniformType(
   valueNode: t.Node,
-  typeNode?: t.Node | null
+  typeNode?: t.Node | null,
 ): UniformInfo["type"] | null {
   // Existing implementation...
   if (typeNode && t.isStringLiteral(typeNode)) {
@@ -141,8 +146,8 @@ function getUniformType(
     const className = t.isMemberExpression(valueNode.callee)
       ? (valueNode.callee.property as t.Identifier).name
       : t.isIdentifier(valueNode.callee)
-      ? valueNode.callee.name
-      : null;
+        ? valueNode.callee.name
+        : null;
 
     switch (className) {
       case "Color":
@@ -175,7 +180,7 @@ const addSubfolder = (folderName: string, subfolderInit: string) => {
       if(folder){
         ${subfolderInit}
       }else{
-        
+
       }
     }
   `;
@@ -184,7 +189,7 @@ const addSubfolder = (folderName: string, subfolderInit: string) => {
 function generateControl(
   uniform: UniformInfo,
   folderName: string,
-  persistent?: boolean
+  persistent?: boolean,
 ): string {
   // Existing implementation...
   // [All the existing control generation code here]
@@ -206,7 +211,7 @@ function generateControl(
           }).on("change", () => {
               ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
-      `
+      `,
       );
 
     // [All other cases]
@@ -236,7 +241,7 @@ function generateControl(
           }).on("change", () => {
               ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
-      `
+      `,
       );
     case "color":
       return addSubfolder(
@@ -245,7 +250,7 @@ function generateControl(
           if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                 const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
-                ${uniform.name}.value.setRGB(color.r, color.g, color.b) 
+                ${uniform.name}.value.setRGB(color.r, color.g, color.b)
               }
           }else{
             const uniformState = window.uniformPane.uniformStateSerializer();
@@ -259,7 +264,7 @@ function generateControl(
           }).on("change", () => {
                 ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
-        `
+        `,
       );
 
     case "vector2":
@@ -269,8 +274,8 @@ function generateControl(
         uniform.type === "vector2"
           ? ["x", "y"]
           : uniform.type === "vector3"
-          ? ["x", "y", "z"]
-          : ["x", "y", "z", "w"];
+            ? ["x", "y", "z"]
+            : ["x", "y", "z", "w"];
 
       // Build range options string for vector components
       const vectorRangeOptions = uniform.range
@@ -285,8 +290,8 @@ function generateControl(
         `
           const ${uniform.name}Folder = folder.addFolder({
             title: '${uniform.name}'
-          }) 
-          
+          })
+
           ${axes
             .map((axis) => {
               return `
@@ -308,7 +313,7 @@ function generateControl(
           `;
             })
             .join("\n")}
-        `
+        `,
       );
     case "texture":
       return addSubfolder(
@@ -334,7 +339,7 @@ function generateControl(
               const texture = new THREE.TextureLoader().load(blobUrl);
               ${uniform.name}.value = texture;
               ${persistent} && window.uniformPane.uniformSaveDebounced()
-            });`
+            });`,
       );
     default:
       return "";
@@ -343,7 +348,7 @@ function generateControl(
 
 // Updated plugin function to accept options
 export default function threeUniformGuiPlugin(
-  options?: ThreeUniformGuiOptions | boolean
+  options?: ThreeUniformGuiOptions | boolean,
 ): Plugin {
   // Handle backward compatibility - if a boolean is passed, treat it as the persistent option
   const opts =
@@ -375,7 +380,17 @@ export default function threeUniformGuiPlugin(
         return;
       }
 
-      debug.log("Processing file:", id);
+      // Robust file-level comment detection
+      const codeFirstBlock = code.substring(0, 300);
+      if (codeFirstBlock.includes("@no-gui-file")) {
+        debug.log("Skipping file due to @no-gui-file comment (raw text check)");
+        return;
+      }
+      const includeOnlyMode = codeFirstBlock.includes("@uniforms-include-only");
+
+      if (includeOnlyMode) {
+        debug.log("Include-only mode enabled for this file (raw text check).");
+      }
 
       try {
         const ast = parser.parse(code, {
@@ -388,11 +403,6 @@ export default function threeUniformGuiPlugin(
         const uniforms: UniformInfo[] = [];
         let paneExists = false;
         const fileComments: any[] = (ast as any).comments || [];
-
-        if (fileComments.some((c) => c.value.includes("@no-gui-file"))) {
-          debug.log("Skipping file due to @no-gui-file comment");
-          return;
-        }
 
         traverse(ast, {
           VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
@@ -439,15 +449,23 @@ export default function threeUniformGuiPlugin(
                     if (newlineCount > 1) break;
                   }
                 }
+                const grandParentNode = path.parentPath.parent;
                 const candidateComments = [
                   ...(nearestComment ? [nearestComment] : []),
+                  ...((grandParentNode as any).leadingComments || []),
                   ...((path.parent as any).leadingComments || []),
                   ...((path.node as any).leadingComments || []),
                   ...((path.node as any).trailingComments || []),
                 ];
 
-                if (hasNoGuiComment(candidateComments)) {
-                  return;
+                if (includeOnlyMode) {
+                  if (!hasGuiComment(candidateComments)) {
+                    return; // In include-only mode, skip if no @gui comment
+                  }
+                } else {
+                  if (hasNoGuiComment(candidateComments)) {
+                    return; // In default mode, skip if @no-gui comment is present
+                  }
                 }
 
                 const rangeConfig = parseRangeComment(candidateComments);
@@ -468,16 +486,24 @@ export default function threeUniformGuiPlugin(
               path.node.init.callee.name === "texture" &&
               path.node.end
             ) {
+              const grandParentNode = path.parentPath.parent;
               const candidateComments = [
+                ...((grandParentNode as any).leadingComments || []),
                 ...((path.parent as any).leadingComments || []),
                 ...((path.node as any).leadingComments || []),
                 ...((path.node as any).trailingComments || []),
               ];
 
-              if (hasNoGuiComment(candidateComments)) {
-                return;
+              if (includeOnlyMode) {
+                if (!hasGuiComment(candidateComments)) {
+                  return; // In include-only mode, skip if no @gui comment
+                }
+              } else {
+                if (hasNoGuiComment(candidateComments)) {
+                  return; // In default mode, skip if @no-gui comment is present
+                }
               }
-              
+
               uniforms.push({
                 name: path.node.id.name,
                 type: "texture",
@@ -493,7 +519,7 @@ export default function threeUniformGuiPlugin(
                 //@ts-ignore
                 (spec) =>
                   //@ts-ignore
-                  t.isImportSpecifier(spec) && spec.imported.name === "Pane"
+                  t.isImportSpecifier(spec) && spec.imported.name === "Pane",
               )
             ) {
               paneExists = true;
@@ -502,12 +528,12 @@ export default function threeUniformGuiPlugin(
         });
 
         if (uniforms.length === 0) {
-          debug.log("No uniforms found in file");
           return;
         }
 
         const ext = pathUtils.extname(id);
-        const fileName = pathUtils.basename(id, ext);
+        const rawFileName = pathUtils.basename(id, ext);
+        const fileName = rawFileName.replace(/[^a-zA-Z0-9_]/g, "_");
 
         debug.log("Found uniforms:", uniforms);
 
@@ -528,7 +554,7 @@ export default function threeUniformGuiPlugin(
           const control = generateControl(
             uniform,
             `uniform_${fileName}`,
-            opts.persistent
+            opts.persistent,
           );
           modifiedCode =
             modifiedCode.slice(0, uniform.position) +
@@ -547,7 +573,7 @@ export default function threeUniformGuiPlugin(
             window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
             window.uniformPane.setupUI()
           }
-          
+
           let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');
           if (folder) {
             folder.dispose();

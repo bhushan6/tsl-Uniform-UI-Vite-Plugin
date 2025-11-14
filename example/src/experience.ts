@@ -1,6 +1,16 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { Fn, mix, positionGeometry, remap, uniform } from "three/tsl";
+import {
+  Fn,
+  mix,
+  positionGeometry,
+  remap,
+  uniform,
+  vec3,
+  sin,
+} from "three/tsl";
 import * as THREE from "three/webgpu";
+import { baseColor, noiseStrength } from "./extra-uniforms";
+import { timerLocal } from "three/tsl";
 
 export class Experience {
   private _canvas: HTMLCanvasElement;
@@ -15,7 +25,7 @@ export class Experience {
 
   constructor(
     canvas: HTMLCanvasElement,
-    size?: { width: number; height: number }
+    size?: { width: number; height: number },
   ) {
     this._canvas = canvas;
     if (size) {
@@ -27,7 +37,7 @@ export class Experience {
         ? this._size.width / this._size.height
         : window.innerWidth / window.innerHeight,
       0.1,
-      100
+      100,
     );
     this._camera.position.set(0, 0, 10);
 
@@ -90,6 +100,7 @@ export class Experience {
 
     this._parent.add(box);
 
+    //@no-gui
     const color1 = uniform(new THREE.Color(0xff0000), "color");
     const color2 = uniform(new THREE.Color(0x00ff00));
     // const progress = uniform(0);
@@ -105,10 +116,18 @@ export class Experience {
     // const textureUniform = texture(tex);
 
     boxMaterial.colorNode = Fn(() => {
-      return mix(color1, color2, remap(positionGeometry.y, -1, 1, 0, 1));
+      const gradient = mix(
+        color1,
+        color2,
+        remap(positionGeometry.y, -1, 1, 0, 1),
+      );
+      return mix(gradient, baseColor, baseColor.a);
     })();
+
     boxMaterial.positionNode = Fn(() => {
-      return positionGeometry.add(position).mul(scale);
+      const simpleWave = sin(positionGeometry.y.mul(10).add(timerLocal()));
+      const displacement = simpleWave.mul(noiseStrength);
+      return positionGeometry.add(vec3(0, displacement, 0)).mul(scale);
     })();
   }
 

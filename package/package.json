@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "dev-build": "npm run build && node copy-dist.js",
     "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
     "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@types/babel__traverse": "^7.20.6",
     "@types/micromatch": "*",
+    "fs": "^0.0.1-security",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
     "vite-plugin-dts": "^4.5.0"

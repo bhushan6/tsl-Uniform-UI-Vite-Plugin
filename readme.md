@@ -116,6 +116,85 @@ options:
 - `max`: Maximum value for the slider
 - `step`: Step size for the slider (default: 0.01)
 
+## Controlling GUI Generation
+
+By default, the plugin generates controls for all uniforms it finds. You can
+control this behavior on a per-file or per-uniform basis using special
+comments.
+
+### Excluding Uniforms (Default Mode)
+
+In the default mode, you can exclude specific files or uniforms from the GUI.
+
+#### Exclude an Entire File
+
+Place this comment at the top of your JavaScript or TypeScript file to prevent
+the plugin from processing it.
+
+```javascript
+//@no-gui-file
+
+import { uniform } from "three/tsl";
+
+// No GUI will be generated for any uniforms in this file.
+const myUniform = uniform(0.5);
+```
+
+#### Exclude a Single Uniform
+
+Place this comment directly above a uniform declaration to exclude just that
+one.
+
+```javascript
+import { uniform } from "three/tsl";
+
+const includedUniform = uniform(0.5);
+
+//@no-gui
+const excludedUniform = uniform(1.0); // No control will be generated for this.
+```
+
+### Include-Only Mode
+
+For more precise control, you can switch to an "include-only" mode. In this
+mode, no uniforms are included by default, and you must explicitly mark the ones
+you want.
+
+#### Enable Include-Only Mode for a File
+
+Place this comment at the top of your file.
+
+```javascript
+//@uniforms-include-only
+
+import { uniform } from "three/tsl";
+
+// By default, no GUI is generated in this mode.
+const ignoredUniform = uniform(0.5);
+```
+
+#### Include a Specific Uniform
+
+In include-only mode, place the `//@gui` comment directly above a uniform to
+generate a control for it.
+
+```javascript
+//@uniforms-include-only
+
+import { uniform } from "three/tsl";
+
+const ignoredUniform = uniform(0.5); // Ignored by default.
+
+//@gui
+const includedUniform = uniform(1.0); // A control will be generated for this.
+
+/**
+ * @gui
+ * @range: { min: 0, max: 5 }
+ */
+export const anotherIncludedUniform = uniform(2.5); // Also included.
+```
+
 ## Caveat
 
 ### Passing Types to the uniform Function
