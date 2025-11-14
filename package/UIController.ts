@@ -6,7 +6,7 @@ class UniformUIController {
   constructor(persistent, enablePresets) {
     this.persistent = persistent;
     this.enablePresets = enablePresets;
-    
+
     if (this.persistent) {
       const savedState = localStorage.getItem("threeUniformGuiPluginState");
       if (savedState) {
@@ -51,7 +51,7 @@ class UniformUIController {
     presetFolder.addBinding(PRESETPARAMS, "newPresetName", {
       label: "Name"
     })
-    
+
     const btn = presetFolder.addButton({
       title: 'Create Preset',
     });
@@ -80,7 +80,7 @@ class UniformUIController {
     }
 
     let presetOptions = createPresetDropDown()
-   
+
 
     btn.on('click', () => {
       const newPresetName = PRESETPARAMS.newPresetName;
@@ -114,7 +114,9 @@ class UniformUIController {
           }
         }
         if (value.children) {
-          acc[value.title] = extractValues(value.children, {});
+          const childObject = extractValues(value.children, {});
+          childObject['__expanded'] = value.expanded
+          acc[value.title] = childObject;
         }
         return acc;
       }, accumulator);
@@ -126,7 +128,6 @@ class UniformUIController {
 
   applyConfigs = (configs) => {
     const paneState = this.pane.exportState();
-    
     const applyValues = (children, params) => {
       children.forEach(child => {
         if(child.title !== 'Presets'){
@@ -141,7 +142,11 @@ class UniformUIController {
               child.binding.value = value
             }
           }else if(child.children){
-            applyValues(child.children, params[child.title] || {})
+            const childParams = params[child.title] || {}
+            if(childParams['__expanded'] !== undefined) {
+              child.expanded = childParams['__expanded']
+            }
+            applyValues(child.children, childParams)
           }
         }
       })
@@ -155,8 +160,8 @@ class UniformUIController {
   undoStack = [];
   redoStack = [];
 
-  actionController = null 
-  
+  actionController = null
+
   refreshActionButtonsController = () => {
     let i = 0
     this.actionController.cellToApiMap_.forEach((api) => {
@@ -190,14 +195,14 @@ class UniformUIController {
     this.refreshActionButtonsController()
     this.undoRedoInProgress = false
   };
-  
+
   copyTimeout = null;
 
   copy = (api) => {
     if (this.copyTimeout) clearTimeout(this.copyTimeout);
     api.title = "Coping...";
     this.pane.refresh();
-    
+
     const uniformState = this.uniformStateSerializer();
     navigator.clipboard.writeText(JSON.stringify(uniformState));
     api.title = "Copied!!";
@@ -208,7 +213,7 @@ class UniformUIController {
       this.pane.refresh();
     }, 1000);
   }
-  
+
 
   setupActionButtons = () => {
     this.actionController = this.pane.addBlade({
@@ -229,13 +234,12 @@ class UniformUIController {
         this.redo()
       }
     });
-    
+
     this.refreshActionButtonsController()
   }
 
   uniformSaveDebounced = () => {
     this.saveTimerId && clearTimeout(this.saveTimerId);
-    console.log(this.undoRedoInProgress)
     if(this.undoRedoInProgress){
       const uniformState = this.uniformStateSerializer();
       this.persistent &&
@@ -244,14 +248,13 @@ class UniformUIController {
           JSON.stringify(uniformState)
         );
       return;
-    } 
+    }
     this.saveTimerId = setTimeout(() => {
       const uniformState = this.uniformStateSerializer();
       if(this.currentState){
         this.undoStack.push({...this.currentState});
       }
       this.currentState = uniformState
-      console.log(this.undoStack)
       this.refreshActionButtonsController()
       this.persistent &&
         localStorage.setItem(

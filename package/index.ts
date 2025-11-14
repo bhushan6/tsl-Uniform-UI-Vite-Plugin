@@ -581,7 +581,16 @@ export default function threeUniformGuiPlugin(
             folder.dispose();
           }
 
-          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'})
+          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'}).on('fold', () => {
+            window.uniformPane.uniformSaveDebounced()
+          })
+
+          setTimeout(() => {
+            if (window.uniformPane.initialUniformState) {
+              window.uniformPane.applyConfigs(window.uniformPane.initialUniformState);
+              window.uniformPane.initialUniformState = null;
+            }
+          }, 500)
 
           ` +
           modifiedCode.slice(lastImportIndex);

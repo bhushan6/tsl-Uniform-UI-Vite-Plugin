@@ -10,4 +10,5 @@ export const noiseStrength = uniform(1.5, "float");
 
 //@gui
 export const noiseSpeed = uniform(0.2, "float");
+//@gui
 export const baseColor = uniform(new THREE.Color(0x8e66ff), "color");
