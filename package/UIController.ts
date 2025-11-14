@@ -1,9 +1,11 @@
 export const uniformPaneClass = `
 class UniformUIController {
   pane = new Pane({ title: "Shader Uniforms" });
+  enablePresets = false;
 
-  constructor(persistent) {
+  constructor(persistent, enablePresets) {
     this.persistent = persistent;
+    this.enablePresets = enablePresets;
     
     if (this.persistent) {
       const savedState = localStorage.getItem("threeUniformGuiPluginState");
@@ -18,17 +20,19 @@ class UniformUIController {
       }
     }
 
-    const presets = localStorage.getItem("threeUniformGuiPluginPresets");
-    if(presets) {
-      this.presets = JSON.parse(presets)
+    if (this.enablePresets) {
+      const presets = localStorage.getItem("threeUniformGuiPluginPresets");
+      if(presets) {
+        this.presets = JSON.parse(presets)
+      }
     }
-    
-    
   }
 
   setupUI(){
     this.setupActionButtons()
-    this.setupPresets();
+    if (this.enablePresets) {
+      this.setupPresets();
+    }
   }
 
   presets = {}

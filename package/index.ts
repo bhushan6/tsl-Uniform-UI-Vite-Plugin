@@ -11,6 +11,7 @@ interface ThreeUniformGuiOptions {
   persistent?: boolean;
   devOnly?: boolean; // New option to control if the plugin only works in dev mode
   exclude?: string[];
+  presets?: boolean;
 }
 
 // Default options
@@ -18,6 +19,7 @@ const defaultOptions: ThreeUniformGuiOptions = {
   persistent: false,
   devOnly: true, // Default to only work in dev mode
   exclude: [],
+  presets: false,
 };
 
 // Rest of the utility functions...
@@ -568,7 +570,7 @@ export default function threeUniformGuiPlugin(
           `
           if (!window.uniformPane) {
             ${uniformPaneClass}
-            window.uniformPane = new UniformUIController(${opts.persistent});
+            window.uniformPane = new UniformUIController(${opts.persistent}, ${opts.presets});
             window.uniformPane.pane.registerPlugin(TweakpaneEssentialsPlugin);
             window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
             window.uniformPane.setupUI()
