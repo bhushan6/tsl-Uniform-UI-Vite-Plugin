@@ -27,8 +27,7 @@ class UniformUIController {
   }
 
   setupUI(){
-    this.setupCopyConfigButton();
-    this.setupUndoRedoButtons()
+    this.setupActionButtons()
     this.setupPresets();
   }
 
@@ -93,30 +92,6 @@ class UniformUIController {
     });
   }
 
-  setupCopyConfigButton() {
-    const btn = this.pane.addButton({
-      title: "Copy configs",
-    });
-
-    let t;
-
-    btn.on("click", () => {
-      if (t) clearTimeout(t);
-      btn.title = "Coping...";
-      this.pane.refresh();
-
-      const uniformState = this.uniformStateSerializer();
-      navigator.clipboard.writeText(JSON.stringify(uniformState));
-      btn.title = "Copied!!";
-      this.pane.refresh();
-
-      t = setTimeout(() => {
-        btn.title = "Copy configs";
-        this.pane.refresh();
-      }, 1000);
-    });
-  }
-
   uniformStateSerializer = () => {
     const paneState = this.pane.exportState();
 
@@ -176,14 +151,14 @@ class UniformUIController {
   undoStack = [];
   redoStack = [];
 
-  undoRedoController = null 
+  actionController = null 
   
-  refreshUndoRedoController = () => {
+  refreshActionButtonsController = () => {
     let i = 0
-    this.undoRedoController.cellToApiMap_.forEach((api) => {
-      if(i === 0){
+    this.actionController.cellToApiMap_.forEach((api) => {
+      if(i === 1){
         api.disabled = this.undoStack.length < 1
-      }else{
+      }else if(i === 2){
         api.disabled = this.redoStack.length < 1
       }
       i += 1;
@@ -198,7 +173,7 @@ class UniformUIController {
     const uniformState = this.uniformStateSerializer();
     this.applyConfigs(last)
     this.redoStack.push(uniformState);
-    this.refreshUndoRedoController()
+    this.refreshActionButtonsController()
     this.undoRedoInProgress = false
   };
 
@@ -208,29 +183,50 @@ class UniformUIController {
     const uniformState = this.uniformStateSerializer();
     this.applyConfigs(last)
     this.undoStack.push(uniformState);
-    this.refreshUndoRedoController()
+    this.refreshActionButtonsController()
     this.undoRedoInProgress = false
   };
   
+  copyTimeout = null;
 
-  setupUndoRedoButtons = () => {
-    this.undoRedoController = this.pane.addBlade({
+  copy = (api) => {
+    if (this.copyTimeout) clearTimeout(this.copyTimeout);
+    api.title = "Coping...";
+    this.pane.refresh();
+    
+    const uniformState = this.uniformStateSerializer();
+    navigator.clipboard.writeText(JSON.stringify(uniformState));
+    api.title = "Copied!!";
+    this.pane.refresh();
+
+    this.copyTimeout = setTimeout(() => {
+      api.title = "Copy";
+      this.pane.refresh();
+    }, 1000);
+  }
+  
+
+  setupActionButtons = () => {
+    this.actionController = this.pane.addBlade({
       view: 'buttongrid',
-      size: [2, 1],
+      size: [3, 1],
       cells: (x, y) => ({
         title: [
-          ['Undo', 'Redo'],
+          ['Copy', 'Undo', 'Redo'],
         ][y][x],
       })
     }).on('click', (ev) => {
+      const buttonApi = Array.from(this.actionController.cellToApiMap_.values())[ev.index[0]];
       if(ev.index[0] === 0){
+        this.copy(buttonApi);
+      } else if(ev.index[0] === 1){
         this.undo();
-      }else{
+      } else {
         this.redo()
       }
     });
     
-    this.refreshUndoRedoController()
+    this.refreshActionButtonsController()
   }
 
   uniformSaveDebounced = () => {
@@ -252,7 +248,7 @@ class UniformUIController {
       }
       this.currentState = uniformState
       console.log(this.undoStack)
-      this.refreshUndoRedoController()
+      this.refreshActionButtonsController()
       this.persistent &&
         localStorage.setItem(
           "threeUniformGuiPluginState",
