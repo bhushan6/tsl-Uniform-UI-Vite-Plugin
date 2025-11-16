@@ -193,6 +193,8 @@ function generateControl(
   folderName: string,
   persistent?: boolean,
 ): string {
+  const captureCall = `window.uniformPane.captureInitialValue('${folderName}', '${uniform.name}', ${uniform.name});`;
+
   // Existing implementation...
   // [All the existing control generation code here]
   switch (uniform.type) {
@@ -200,6 +202,7 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
+          ${captureCall}
           if(window.uniformPane.initialUniformState){
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
@@ -229,6 +232,7 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
+          ${captureCall}
           if(window.uniformPane.initialUniformState){
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
@@ -249,6 +253,7 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
+          ${captureCall}
           if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                 const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
@@ -290,6 +295,7 @@ function generateControl(
       return addSubfolder(
         folderName,
         `
+          ${captureCall}
           const ${uniform.name}Folder = folder.addFolder({
             title: '${uniform.name}'
           })

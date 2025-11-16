@@ -2,6 +2,7 @@ export const uniformPaneClass = `
 class UniformUIController {
   pane = new Pane({ title: "Shader Uniforms" });
   enablePresets = false;
+  trueInitialState = {};
 
   constructor(persistent, enablePresets) {
     this.persistent = persistent;
@@ -25,6 +26,29 @@ class UniformUIController {
       if(presets) {
         this.presets = JSON.parse(presets)
       }
+    }
+  }
+
+  captureInitialValue(folderName, uniformName, uniformObject) {
+    if (!this.trueInitialState[folderName]) {
+      this.trueInitialState[folderName] = {};
+    }
+    // Capture only once
+    if (this.trueInitialState[folderName][uniformName]) {
+      return;
+    }
+
+    const value = uniformObject.value;
+    if (value?.isColor) {
+      this.trueInitialState[folderName][uniformName] = JSON.stringify({
+        r: value.r,
+        g: value.g,
+        b: value.b,
+      });
+    } else if (value?.isVector2 || value?.isVector3 || value?.isVector4) {
+      this.trueInitialState[folderName][uniformName] = { ...value };
+    } else {
+      this.trueInitialState[folderName][uniformName] = value;
     }
   }
 
@@ -196,6 +220,12 @@ class UniformUIController {
     this.undoRedoInProgress = false
   };
 
+  reset = () => {
+    this.undoRedoInProgress = true;
+    this.applyConfigs(this.trueInitialState);
+    this.undoRedoInProgress = false;
+  }
+
   copyTimeout = null;
 
   copy = (api) => {
@@ -218,10 +248,10 @@ class UniformUIController {
   setupActionButtons = () => {
     this.actionController = this.pane.addBlade({
       view: 'buttongrid',
-      size: [3, 1],
+      size: [4, 1],
       cells: (x, y) => ({
         title: [
-          ['Copy', 'Undo', 'Redo'],
+          ['Copy', 'Undo', 'Redo', 'Reset'],
         ][y][x],
       })
     }).on('click', (ev) => {
@@ -230,8 +260,10 @@ class UniformUIController {
         this.copy(buttonApi);
       } else if(ev.index[0] === 1){
         this.undo();
-      } else {
+      } else if(ev.index[0] === 2){
         this.redo()
+      } else {
+        this.reset()
       }
     });
 
