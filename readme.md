@@ -203,7 +203,7 @@ export const anotherIncludedUniform = uniform(2.5); // Also included.
 
 The plugin can only detect uniforms that are declared as variables using `const`, `let`, or `var`. Inline uniform calls within expressions are **not supported** and will be ignored.
 
-#### âŒ Not Supported (Inline Uniforms)
+#### ❌ Not Supported (Inline Uniforms)
 
 ```javascript
 import { uniform } from "three/tsl";
@@ -221,7 +221,7 @@ const config = {
 };
 ```
 
-#### âœ… Supported (Variable Declarations)
+#### ✅ Supported (Variable Declarations)
 
 ```javascript
 import { uniform } from "three/tsl";
