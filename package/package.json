@@ -18,9 +18,9 @@
     "dev": "vite",
     "build": "vite build",
     "dev-build": "npm run build && node copy-dist.js",
-    "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
-    "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
-    "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example && npm install tsl-uniform-ui-vite-plugin@latest",
+    "publish:patch": "npm version patch && npm run build && npm publish && sleep 10 && cd ../example/react && npm install tsl-uniform-ui-vite-plugin@latest && cd ../example/vanilla && npm install tsl-uniform-ui-vite-plugin@latest",
+    "publish:minor": "npm version minor && npm run build && npm publish && sleep 10 && cd ../example/react && npm install tsl-uniform-ui-vite-plugin@latest && cd ../example/vanilla && npm install tsl-uniform-ui-vite-plugin@latest",
+    "publish:major": "npm version major && npm run build && npm publish && sleep 10 && cd ../example/react && npm install tsl-uniform-ui-vite-plugin@latest && cd ../example/vanilla && npm install tsl-uniform-ui-vite-plugin@latest",
     "preview": "vite preview",
     "prepare": "vite build"
   },
