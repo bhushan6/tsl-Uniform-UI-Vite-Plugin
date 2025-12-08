@@ -50,6 +50,124 @@ const position = uniform(new THREE.Vector3(0, 1, 0)); // vector3
 The plugin will automatically generate appropriate Tweakpane controls for each
 uniform based on its type.
 
+## React Three Fiber Usage
+
+This plugin is fully compatible with React Three Fiber! However, there's an important caveat regarding plugin order in your Vite configuration.
+
+> [!IMPORTANT]
+> When using this plugin with React, you **must** place `threeUniformGui()` **before** the `react()` plugin in your `vite.config.ts`. Otherwise, the app will break.
+
+**Correct Configuration:**
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import threeUniformGui from 'tsl-uniform-ui-vite-plugin'
+
+export default defineConfig({
+  plugins: [
+    threeUniformGui({ devOnly: false, persistent: true }), // ✅ BEFORE react()
+    react(),
+  ],
+})
+```
+
+**Incorrect Configuration:**
+
+```typescript
+// vite.config.ts - ❌ DON'T DO THIS
+export default defineConfig({
+  plugins: [
+    react(),
+    threeUniformGui(), // ❌ After react() - will break!
+  ],
+})
+```
+
+**Example with React Three Fiber:**
+
+```tsx
+import { useThree } from '@react-three/fiber'
+import { useMemo } from 'react'
+import { uniform } from 'three/tsl'
+
+const MyComponent = () => {
+  const { nodes } = useMemo(() => {
+    const color1 = uniform(new THREE.Color(0x8e66ff), "color")
+    
+    /**
+     * @gui
+     * @range: { min: -50, max: 50, step: 1 }
+     */
+    const displacement = uniform(0)
+    
+    return { nodes: { color1, displacement } }
+  }, [])
+  
+  return (
+    <mesh>
+      <sphereGeometry args={[1, 32, 32]} />
+      <meshBasicNodeMaterial colorNode={nodes.color1} />
+    </mesh>
+  )
+}
+```
+
+### React StrictMode + TSL Compatibility
+
+> [!WARNING]
+> When using React's **StrictMode** with TSL's `Fn` function, there's a caching behavior that can cause uniforms to become disconnected from the Tweakpane UI.
+
+**The Problem:**
+
+TSL's `Fn()` function caches shader nodes internally. In StrictMode, React runs `useMemo` twice, creating two different uniform objects. However, `Fn` may cache and reuse the shader node from the first run, causing it to reference stale uniforms while Tweakpane binds to the new ones.
+
+**Solution 1: Define uniforms inside `Fn` callbacks** ✅
+
+If you define uniforms inside the `Fn` callback, TSL always uses the correct reference:
+
+```tsx
+const { nodes } = useMemo(() => {
+  const gradientNode = Fn(() => {
+    // ✅ Uniforms defined INSIDE Fn - works with StrictMode
+    const color1 = uniform(new THREE.Color("red"), "color");
+    const color2 = uniform(new THREE.Color("yellow"), "color");
+    return mix(color1, color2, uv().y);
+  });
+
+  return { nodes: { colorNode: gradientNode() } };
+}, []);
+```
+
+**Solution 2: Disable StrictMode** 
+
+If you prefer to define uniforms outside `Fn` callbacks, disable StrictMode:
+
+```tsx
+// main.tsx
+createRoot(document.getElementById('root')!).render(
+  // <StrictMode>  ← Comment out or remove
+  <App />
+  // </StrictMode>
+)
+```
+
+Then you can define uniforms outside `Fn`:
+
+```tsx
+const { nodes } = useMemo(() => {
+  // Works without StrictMode
+  const color1 = uniform(new THREE.Color("red"), "color");
+  
+  const gradientNode = Fn(() => {
+    return mix(color1, color2, uv().y);  // Uses external uniform
+  });
+
+  return { nodes: { colorNode: gradientNode() } };
+}, []);
+```
+
 ## Configuration Options
 
 You can configure the plugin with the following options:

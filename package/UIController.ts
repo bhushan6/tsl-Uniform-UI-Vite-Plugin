@@ -3,13 +3,21 @@ class UniformUIController {
   pane = new Pane({ title: "Shader Uniforms" });
   enablePresets = false;
   trueInitialState = {};
-
+  uniformBindings = {}; // Track individual uniform bindings for cleanup
+  
   constructor(persistent, enablePresets) {
     this.persistent = persistent;
     this.enablePresets = enablePresets;
 
     if (this.persistent) {
       const savedState = localStorage.getItem("threeUniformGuiPluginState");
+
+      console.log(this.pane)
+
+      this.pane.on('fold', () => {
+        this.uniformSaveDebounced()
+      })
+
       if (savedState) {
         try {
           const parsedState = JSON.parse(savedState);
@@ -49,6 +57,41 @@ class UniformUIController {
       this.trueInitialState[folderName][uniformName] = { ...value };
     } else {
       this.trueInitialState[folderName][uniformName] = value;
+    }
+  }
+
+  // Clean up individual uniform binding
+  disposeUniformBinding(folderName, uniformName) {
+  console.log(folderName, uniformName, this.uniformBindings, "disposing binding")
+    if (this.uniformBindings[folderName]?.[uniformName]) {
+      try {
+        this.uniformBindings[folderName][uniformName].dispose();
+      } catch (err) {
+        console.warn('Failed to dispose binding:', err);
+      }
+      delete this.uniformBindings[folderName][uniformName];
+    }
+  }
+
+  // Store uniform binding reference
+  storeUniformBinding(folderName, uniformName, binding) {
+    if (!this.uniformBindings[folderName]) {
+      this.uniformBindings[folderName] = {};
+    }
+    this.uniformBindings[folderName][uniformName] = binding;
+  }
+
+  // Clean up all bindings for a folder
+  disposeFolderBindings(folderName) {
+    if (this.uniformBindings[folderName]) {
+      Object.keys(this.uniformBindings[folderName]).forEach(uniformName => {
+        try {
+          this.uniformBindings[folderName][uniformName].dispose();
+        } catch (err) {
+          console.warn('Failed to dispose binding:', err);
+        }
+      });
+      delete this.uniformBindings[folderName];
     }
   }
 
@@ -122,7 +165,6 @@ class UniformUIController {
 
   uniformStateSerializer = () => {
     const paneState = this.pane.exportState();
-
     const extractValues = (children, accumulator) => {
       return children.reduce((acc, value) => {
         if (value.label) {
@@ -145,7 +187,11 @@ class UniformUIController {
         return acc;
       }, accumulator);
     };
-    const state = extractValues(paneState.children, {})
+    const state = extractValues(paneState.children, {
+      root: {
+        __expanded : paneState.expanded
+      }
+    })
     delete state.Presets
     return state;
   };
@@ -175,6 +221,7 @@ class UniformUIController {
         }
       })
     }
+    this.pane.expanded = configs.root.__expanded === true ? true : configs.root.__expanded === false ? false : paneState.expanded
     applyValues(paneState.children, configs)
     this.pane.importState(paneState);
   }
@@ -293,6 +340,7 @@ class UniformUIController {
           "threeUniformGuiPluginState",
           JSON.stringify(uniformState)
         );
+      console.log({uniformState})
     }, 500);
   };
 

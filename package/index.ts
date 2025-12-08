@@ -9,7 +9,7 @@ import micromatch from "micromatch";
 // Plugin configuration interface
 interface ThreeUniformGuiOptions {
   persistent?: boolean;
-  devOnly?: boolean; // New option to control if the plugin only works in dev mode
+  devOnly?: boolean;
   exclude?: string[];
   presets?: boolean;
 }
@@ -17,7 +17,7 @@ interface ThreeUniformGuiOptions {
 // Default options
 const defaultOptions: ThreeUniformGuiOptions = {
   persistent: false,
-  devOnly: true, // Default to only work in dev mode
+  devOnly: true,
   exclude: [],
   presets: false,
 };
@@ -25,11 +25,9 @@ const defaultOptions: ThreeUniformGuiOptions = {
 // Rest of the utility functions...
 const pathUtils = {
   basename: (filePath: string, ext?: string): string => {
-    // Extract file name from path
     const parts = filePath.split(/[/\\]/);
     let fileName = parts[parts.length - 1];
 
-    // Remove extension if provided
     if (ext && fileName.endsWith(ext)) {
       fileName = fileName.slice(0, -ext.length);
     }
@@ -38,7 +36,6 @@ const pathUtils = {
   },
 
   extname: (filePath: string): string => {
-    // Extract extension from filename
     const lastDotIndex = filePath.lastIndexOf(".");
     return lastDotIndex !== -1 ? filePath.slice(lastDotIndex) : "";
   },
@@ -52,15 +49,15 @@ const traverse = (traverseDefault.default ||
 interface UniformInfo {
   name: string;
   type:
-    | "boolean"
-    | "number"
-    | "color"
-    | "vector2"
-    | "vector3"
-    | "vector4"
-    | "matrix3"
-    | "matrix4"
-    | "texture";
+  | "boolean"
+  | "number"
+  | "color"
+  | "vector2"
+  | "vector3"
+  | "vector4"
+  | "matrix3"
+  | "matrix4"
+  | "texture";
   position: number;
   range?: {
     min?: number;
@@ -88,20 +85,16 @@ function hasGuiComment(comments: any[]): boolean {
   return comments.some((comment) => comment.value.includes("@gui"));
 }
 
-// Function to parse range configuration from comments
 function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
   if (!comments) return undefined;
 
   for (const comment of comments) {
-    // Supported comment format:
-    // @range: { min: 0, max: 2, step: 0.1 }
     const match = comment.value.match(/@range:\s*(\{[\s\S]*?\})/);
     if (match) {
       let configStr = match[1];
       try {
         return JSON.parse(configStr);
       } catch (e) {
-        // Try adding quotes to unquoted keys
         const quotedStr = configStr.replace(
           /([{,]\s*)([a-zA-Z_]\w*)\s*:/g,
           '$1"$2":',
@@ -118,12 +111,10 @@ function parseRangeComment(comments: any[]): UniformInfo["range"] | undefined {
   return undefined;
 }
 
-// All the existing type detection and control generation functions...
 function getUniformType(
   valueNode: t.Node,
   typeNode?: t.Node | null,
 ): UniformInfo["type"] | null {
-  // Existing implementation...
   if (typeNode && t.isStringLiteral(typeNode)) {
     const explicitType = typeNode.value.toLowerCase();
     switch (explicitType) {
@@ -181,8 +172,6 @@ const addSubfolder = (folderName: string, subfolderInit: string) => {
     let folder = window.uniformPane.pane.children.find(child => child.title === '${folderName}');
       if(folder){
         ${subfolderInit}
-      }else{
-
       }
     }
   `;
@@ -193,16 +182,24 @@ function generateControl(
   folderName: string,
   persistent?: boolean,
 ): string {
-  const captureCall = `window.uniformPane.captureInitialValue('${folderName}', '${uniform.name}', ${uniform.name});`;
+  const captureCall = `
+    window.uniformPane.captureInitialValue('${folderName}', '${uniform.name}', ${uniform.name});
+    console.log(${uniform.name})
+    `;
 
-  // Existing implementation...
-  // [All the existing control generation code here]
+  // Cleanup call - dispose existing binding before creating new one
+  console.log(uniform.name, folderName);
+  const cleanupCall = `
+    window.uniformPane.disposeUniformBinding('${folderName}', '${uniform.name}');
+  `;
+
   switch (uniform.type) {
     case "boolean":
       return addSubfolder(
         folderName,
         `
           ${captureCall}
+          ${cleanupCall}
           if(window.uniformPane.initialUniformState){
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
@@ -211,28 +208,28 @@ function generateControl(
             const uniformState = window.uniformPane.uniformStateSerializer();
             window.uniformPane.currentState = uniformState
           }
-          folder.addBinding(${uniform.name}, 'value', {
+          const binding_${uniform.name} = folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}'
           }).on("change", () => {
               ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
+          window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}', binding_${uniform.name});
       `,
       );
 
-    // [All other cases]
     case "number":
-      // Build range options string
       const rangeOptions = uniform.range
         ? Object.entries(uniform.range)
-            .filter(([_, value]) => value !== undefined)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(",\n            ")
+          .filter(([_, value]) => value !== undefined)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(",\n            ")
         : "step: 0.01";
 
       return addSubfolder(
         folderName,
         `
           ${captureCall}
+          ${cleanupCall}
           if(window.uniformPane.initialUniformState){
             if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
               ${uniform.name}.value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
@@ -241,19 +238,22 @@ function generateControl(
             const uniformState = window.uniformPane.uniformStateSerializer();
             window.uniformPane.currentState = uniformState
           }
-        folder.addBinding(${uniform.name}, 'value', {
+          const binding_${uniform.name} = folder.addBinding(${uniform.name}, 'value', {
             label: '${uniform.name}',
             ${rangeOptions}
           }).on("change", () => {
               ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
+          window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}', binding_${uniform.name});
       `,
       );
+
     case "color":
       return addSubfolder(
         folderName,
         `
           ${captureCall}
+          ${cleanupCall}
           if(window.uniformPane.initialUniformState){
               if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                 const color = JSON.parse(window.uniformPane.initialUniformState.${folderName}.${uniform.name} )
@@ -263,7 +263,7 @@ function generateControl(
             const uniformState = window.uniformPane.uniformStateSerializer();
             window.uniformPane.currentState = uniformState
           }
-          folder.addBinding(${uniform.name}, 'value', {
+          const binding_${uniform.name} = folder.addBinding(${uniform.name}, 'value', {
               label: '${uniform.name}',
               view: 'color',
               picker: 'inline',
@@ -271,6 +271,7 @@ function generateControl(
           }).on("change", () => {
                 ${persistent} && window.uniformPane.uniformSaveDebounced()
           });
+          window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}', binding_${uniform.name});
         `,
       );
 
@@ -284,25 +285,29 @@ function generateControl(
             ? ["x", "y", "z"]
             : ["x", "y", "z", "w"];
 
-      // Build range options string for vector components
       const vectorRangeOptions = uniform.range
         ? Object.entries(uniform.range)
-            .filter(([_, value]) => value !== undefined)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(",\n              ")
+          .filter(([_, value]) => value !== undefined)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(",\n              ")
         : "step: 0.01";
 
       return addSubfolder(
         folderName,
         `
           ${captureCall}
+          ${cleanupCall}
+
+          ${axes.map(axis => `window.uniformPane.disposeUniformBinding('${folderName}', '${uniform.name}_${axis}');`).join('\n')}
           const ${uniform.name}Folder = folder.addFolder({
             title: '${uniform.name}'
           })
 
+          window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}', ${uniform.name}Folder);
+
           ${axes
-            .map((axis) => {
-              return `
+          .map((axis, index) => {
+            return `
               if(window.uniformPane.initialUniformState){
                 if(window.uniformPane.initialUniformState.${folderName}?.${uniform.name}){
                   const value = window.uniformPane.initialUniformState.${folderName}.${uniform.name}
@@ -312,27 +317,31 @@ function generateControl(
                 const uniformState = window.uniformPane.uniformStateSerializer();
                 window.uniformPane.currentState = uniformState
               }
-            ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
+            const binding_${uniform.name}_${axis} = ${uniform.name}Folder.addBinding(${uniform.name}.value, '${axis}', {
               label: '${axis}',
               ${vectorRangeOptions}
             }).on("change", () => {
               ${persistent} &&  window.uniformPane.uniformSaveDebounced()
             });
+            window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}_${axis}', binding_${uniform.name}_${axis});
           `;
-            })
-            .join("\n")}
+          })
+          .join("\n")}
         `,
       );
+
     case "texture":
       return addSubfolder(
         folderName,
-        ` const ${uniform.name}Params = {
+        `
+          ${cleanupCall}
+          const ${uniform.name}Params = {
               file: "",
             }
             const ${uniform.name}Folder = folder.addFolder({
               title: '${uniform.name}'
             });
-            ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
+            const binding_${uniform.name} = ${uniform.name}Folder.addBinding(${uniform.name}Params, "file", {
               view: "file-input",
               lineCount: 3,
               filetypes: [".png", ".jpg"],
@@ -347,18 +356,19 @@ function generateControl(
               const texture = new THREE.TextureLoader().load(blobUrl);
               ${uniform.name}.value = texture;
               ${persistent} && window.uniformPane.uniformSaveDebounced()
-            });`,
+            });
+            window.uniformPane.storeUniformBinding('${folderName}', '${uniform.name}', binding_${uniform.name});
+        `,
       );
+
     default:
       return "";
   }
 }
 
-// Updated plugin function to accept options
 export default function threeUniformGuiPlugin(
   options?: ThreeUniformGuiOptions | boolean,
 ): Plugin {
-  // Handle backward compatibility - if a boolean is passed, treat it as the persistent option
   const opts =
     typeof options === "boolean"
       ? { ...defaultOptions, persistent: options }
@@ -370,7 +380,6 @@ export default function threeUniformGuiPlugin(
     name: "three-uniform-gui",
     enforce: "pre",
     apply: (config, { command }) => {
-      // Only apply in development mode if devOnly is true
       if (opts.devOnly && command !== "serve") {
         return false;
       }
@@ -388,7 +397,6 @@ export default function threeUniformGuiPlugin(
         return;
       }
 
-      // Robust file-level comment detection
       const codeFirstBlock = code.substring(0, 300);
       if (codeFirstBlock.includes("@no-gui-file")) {
         debug.log("Skipping file due to @no-gui-file comment (raw text check)");
@@ -405,7 +413,7 @@ export default function threeUniformGuiPlugin(
           sourceType: "module",
           plugins: ["typescript", "jsx"],
           comments: true,
-          attachComments: true, // Enable comment parsing
+          attachComments: true,
         } as any);
 
         const uniforms: UniformInfo[] = [];
@@ -414,7 +422,6 @@ export default function threeUniformGuiPlugin(
 
         traverse(ast, {
           VariableDeclarator(path: NodePath<t.VariableDeclarator>) {
-            // Existing implementation...
             if (
               t.isCallExpression(path.node.init) &&
               t.isIdentifier(path.node.init.callee) &&
@@ -439,21 +446,17 @@ export default function threeUniformGuiPlugin(
               }
 
               if (type && path.node.end) {
-                // Parse comments near this declaration for range configuration
                 const nodeStart = (path.node.start as number) || 0;
-                // Find the nearest preceding comment with minimal separation
                 let nearestComment: any | undefined;
                 for (let i = fileComments.length - 1; i >= 0; i -= 1) {
                   const c = fileComments[i];
                   if (typeof c.end === "number" && c.end <= nodeStart) {
                     const between = code.slice(c.end, nodeStart);
-                    // Allow at most one newline and only whitespace between comment and node
                     const newlineCount = (between.match(/\n/g) || []).length;
                     if (/^[\s;]*$/.test(between) && newlineCount <= 1) {
                       nearestComment = c;
                       break;
                     }
-                    // If there is too much separation, stop searching further
                     if (newlineCount > 1) break;
                   }
                 }
@@ -468,11 +471,11 @@ export default function threeUniformGuiPlugin(
 
                 if (includeOnlyMode) {
                   if (!hasGuiComment(candidateComments)) {
-                    return; // In include-only mode, skip if no @gui comment
+                    return;
                   }
                 } else {
                   if (hasNoGuiComment(candidateComments)) {
-                    return; // In default mode, skip if @no-gui comment is present
+                    return;
                   }
                 }
 
@@ -486,7 +489,7 @@ export default function threeUniformGuiPlugin(
                 });
               }
             }
-            // Check for texture uniform patterns
+
             if (
               t.isIdentifier(path.node.id) &&
               t.isCallExpression(path.node.init) &&
@@ -504,11 +507,11 @@ export default function threeUniformGuiPlugin(
 
               if (includeOnlyMode) {
                 if (!hasGuiComment(candidateComments)) {
-                  return; // In include-only mode, skip if no @gui comment
+                  return;
                 }
               } else {
                 if (hasNoGuiComment(candidateComments)) {
-                  return; // In default mode, skip if @no-gui comment is present
+                  return;
                 }
               }
 
@@ -582,14 +585,48 @@ export default function threeUniformGuiPlugin(
             window.uniformPane.setupUI()
           }
 
-          let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');
-          if (folder) {
-            folder.dispose();
+          
+         
+
+          if (import.meta.hot ) {
+            import.meta.hot.on('vite:beforeUpdate', (data) => {
+              console.log('🔥 HMR update about to start!', data);
+               if (window.uniformPane.persistent) {
+                const savedState = localStorage.getItem("threeUniformGuiPluginState");
+
+                if (savedState) {
+                  try {
+                    const parsedState = JSON.parse(savedState);
+                    setTimeout(() => {
+                      window.uniformPane.applyConfigs(parsedState);
+                    }, 500);
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }
+              }
+            });
+
+            import.meta.hot.on('vite:afterUpdate', () => {
+              console.log('✅ HMR update finished!');
+            });
+
+            import.meta.hot.on('vite:beforeFullReload', () => {
+              console.log('⚠️ A full page reload is about to happen!');
+            });
+            
+            import.meta.hot.on('vite:error', (error) => {
+              console.error('❌ HMR error occurred:', error);
+            });
           }
 
-          window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'}).on('fold', () => {
-            window.uniformPane.uniformSaveDebounced()
-          })
+          let folder = window.uniformPane.pane.children.find(child => child.title === 'uniform_${fileName}');
+
+          if(!folder) {
+            window.uniformPane.pane.addFolder({ title: 'uniform_${fileName}'}).on('fold', () => {
+              window.uniformPane.uniformSaveDebounced()
+            })
+          }
 
           setTimeout(() => {
             if (window.uniformPane.initialUniformState) {
