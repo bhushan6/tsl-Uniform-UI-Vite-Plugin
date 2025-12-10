@@ -12,6 +12,7 @@ interface ThreeUniformGuiOptions {
   devOnly?: boolean;
   exclude?: string[];
   presets?: boolean;
+  draggable?: boolean;
 }
 
 // Default options
@@ -20,6 +21,7 @@ const defaultOptions: ThreeUniformGuiOptions = {
   devOnly: true,
   exclude: [],
   presets: false,
+  draggable: false,
 };
 
 // Rest of the utility functions...
@@ -579,7 +581,7 @@ export default function threeUniformGuiPlugin(
           `
           if (!window.uniformPane) {
             ${uniformPaneClass}
-            window.uniformPane = new UniformUIController(${opts.persistent}, ${opts.presets});
+            window.uniformPane = new UniformUIController(${opts.persistent}, ${opts.presets}, ${opts.draggable});
             window.uniformPane.pane.registerPlugin(TweakpaneEssentialsPlugin);
             window.uniformPane.pane.registerPlugin(TweakpaneFileImportPlugin);
             window.uniformPane.setupUI()

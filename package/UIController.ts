@@ -4,10 +4,12 @@ class UniformUIController {
   enablePresets = false;
   trueInitialState = {};
   uniformBindings = {}; // Track individual uniform bindings for cleanup
+  draggable = false;
   
-  constructor(persistent, enablePresets) {
+  constructor(persistent, enablePresets, draggable = false) {
     this.persistent = persistent;
     this.enablePresets = enablePresets;
+    this.draggable = draggable;
 
     if (this.persistent) {
       const savedState = localStorage.getItem("threeUniformGuiPluginState");
@@ -33,6 +35,120 @@ class UniformUIController {
       const presets = localStorage.getItem("threeUniformGuiPluginPresets");
       if(presets) {
         this.presets = JSON.parse(presets)
+      }
+    }
+
+    if (this.draggable) {
+      this.setupDraggable();
+    }
+  }
+
+  setupDraggable() {
+    const paneElement = this.pane.element;
+    const containerElement = paneElement.parentElement;
+    
+    // Make container positioned for dragging
+    containerElement.style.position = 'fixed';
+    containerElement.style.zIndex = '1000';
+    
+    // Get the title bar element (first child with class tp-rotv_t or the title button)
+    const titleBar = paneElement.querySelector('.tp-rotv_b');
+    
+    if (!titleBar) {
+      console.warn('[three-uniform-gui] Could not find title bar for draggable panel');
+      return;
+    }
+    
+    // Style the title bar to indicate it's draggable
+    titleBar.style.cursor = 'grab';
+    
+    let isDragging = false;
+    let hasDragged = false; // Track if actual dragging occurred (not just a click)
+    let startX = 0;
+    let startY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+    
+    const onMouseDown = (e) => {
+      // Only start drag on left mouse button and if clicking on title area (not the fold button)
+      if (e.button !== 0) return;
+      if (e.target.closest('.tp-rotv_m')) return; // Ignore fold button clicks
+      
+      isDragging = true;
+      hasDragged = false; // Reset drag flag
+      titleBar.style.cursor = 'grabbing';
+      
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const rect = containerElement.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+      // Prevent text selection during drag
+      e.preventDefault();
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    };
+    
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      // Only consider it a drag if moved more than 3px (prevents accidental drags on clicks)
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+        hasDragged = true;
+      }
+      
+      containerElement.style.left = (initialLeft + deltaX) + 'px';
+      containerElement.style.top = (initialTop + deltaY) + 'px';
+      containerElement.style.right = 'auto';
+    };
+    
+    const onMouseUp = () => {
+      isDragging = false;
+      titleBar.style.cursor = 'grab';
+      
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      
+      // Save position if persistent
+      if (this.persistent) {
+        const rect = containerElement.getBoundingClientRect();
+        localStorage.setItem('threeUniformGuiPluginPosition', JSON.stringify({
+          left: rect.left,
+          top: rect.top
+        }));
+      }
+    };
+    
+    // Prevent click event from firing after a drag (which would toggle the panel)
+    const onClickCapture = (e) => {
+      if (hasDragged) {
+        e.stopPropagation();
+        e.preventDefault();
+        hasDragged = false;
+      }
+    };
+    
+    titleBar.addEventListener('mousedown', onMouseDown);
+    titleBar.addEventListener('click', onClickCapture, true);
+    
+    // Restore saved position if persistent
+    if (this.persistent) {
+      const savedPosition = localStorage.getItem('threeUniformGuiPluginPosition');
+      if (savedPosition) {
+        try {
+          const pos = JSON.parse(savedPosition);
+          containerElement.style.left = pos.left + 'px';
+          containerElement.style.top = pos.top + 'px';
+          containerElement.style.right = 'auto';
+        } catch (err) {
+          console.warn('[three-uniform-gui] Could not restore panel position');
+        }
       }
     }
   }

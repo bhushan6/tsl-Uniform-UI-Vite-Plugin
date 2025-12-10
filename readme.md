@@ -17,6 +17,7 @@ real-time controls for uniform values without manual GUI setup.
 - Persistent configs
 - Undo/redo
 - Presets
+- Draggable panel
 - Development-only mode (disabled in production by default)
 
 ## Installation
@@ -182,16 +183,18 @@ export default {
       persistent: true, // Save configurations in localStorage
       devOnly: true, // Only active in development mode (default)
       presets: true, // Enable the presets feature
+      draggable: true, // Make the panel draggable
     }),
   ],
 };
 ```
 
-| Option       | Type    | Default | Description                                |
-| ------------ | ------- | ------- | ------------------------------------------ |
-| `persistent` | boolean | `false` | Save UI state in localStorage              |
-| `devOnly`    | boolean | `true`  | Only enable the plugin in development mode |
-| `presets`    | boolean | `false` | Enable the presets feature                 |
+| Option       | Type    | Default | Description                                                                 |
+| ------------ | ------- | ------- | --------------------------------------------------------------------------- |
+| `persistent` | boolean | `false` | Save UI state in localStorage                                               |
+| `devOnly`    | boolean | `true`  | Only enable the plugin in development mode                                  |
+| `presets`    | boolean | `false` | Enable the presets feature                                                  |
+| `draggable`  | boolean | `false` | Make the panel draggable by clicking and dragging the title bar             |
 
 For backward compatibility, you can still use the old configuration style:
 
@@ -315,59 +318,7 @@ const includedUniform = uniform(1.0); // A control will be generated for this.
 export const anotherIncludedUniform = uniform(2.5); // Also included.
 ```
 
-## Caveats
-
-### Inline Uniforms Are Not Supported
-
-The plugin can only detect uniforms that are declared as variables using `const`, `let`, or `var`. Inline uniform calls within expressions are **not supported** and will be ignored.
-
-#### ❌ Not Supported (Inline Uniforms)
-
-```javascript
-import { uniform } from "three/tsl";
-
-// Inline uniform - will NOT generate a GUI control
-const result = someValue.mul(uniform(0.5));
-
-// Nested inline uniform - will NOT generate a GUI control
-const color = mix(uniform(new THREE.Color(1, 0, 0)), baseColor, 0.5);
-
-// Uniforms in data structures - will NOT generate GUI controls
-const config = {
-  brightness: uniform(1.0),
-  contrast: uniform(0.5),
-};
-```
-
-#### ✅ Supported (Variable Declarations)
-
-```javascript
-import { uniform } from "three/tsl";
-
-// Declare uniform as a variable - WILL generate a GUI control
-const multiplier = uniform(0.5);
-const result = someValue.mul(multiplier);
-
-// Declare uniforms separately before using them
-const color1 = uniform(new THREE.Color(1, 0, 0));
-const color2 = uniform(new THREE.Color(0, 0, 1));
-const mixedColor = mix(color1, color2, 0.5);
-
-// Extract uniforms from data structures
-const brightness = uniform(1.0);
-const contrast = uniform(0.5);
-const config = { brightness, contrast };
-```
-
-**Why This Limitation Exists:**
-
-The plugin works by analyzing your code at build time using AST (Abstract Syntax Tree) parsing. It looks for variable declarations that use the `uniform()` function. Detecting inline uniforms would require:
-
-1. Transforming your code structure by hoisting inline uniforms to variable declarations
-2. Managing variable scope and naming automatically
-3. Handling cases where the same inline uniform appears multiple times
-
-These transformations would significantly alter your code structure and could introduce bugs or unexpected behavior.
+## Caveat
 
 ### Passing Types to the uniform Function
 

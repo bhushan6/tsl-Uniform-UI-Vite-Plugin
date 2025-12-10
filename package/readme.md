@@ -17,6 +17,7 @@ real-time controls for uniform values without manual GUI setup.
 - Persistent configs
 - Undo/redo
 - Presets
+- Draggable panel
 - Development-only mode (disabled in production by default)
 
 ## Installation
@@ -182,16 +183,18 @@ export default {
       persistent: true, // Save configurations in localStorage
       devOnly: true, // Only active in development mode (default)
       presets: true, // Enable the presets feature
+      draggable: true, // Make the panel draggable
     }),
   ],
 };
 ```
 
-| Option       | Type    | Default | Description                                |
-| ------------ | ------- | ------- | ------------------------------------------ |
-| `persistent` | boolean | `false` | Save UI state in localStorage              |
-| `devOnly`    | boolean | `true`  | Only enable the plugin in development mode |
-| `presets`    | boolean | `false` | Enable the presets feature                 |
+| Option       | Type    | Default | Description                                                                 |
+| ------------ | ------- | ------- | --------------------------------------------------------------------------- |
+| `persistent` | boolean | `false` | Save UI state in localStorage                                               |
+| `devOnly`    | boolean | `true`  | Only enable the plugin in development mode                                  |
+| `presets`    | boolean | `false` | Enable the presets feature                                                  |
+| `draggable`  | boolean | `false` | Make the panel draggable by clicking and dragging the title bar             |
 
 For backward compatibility, you can still use the old configuration style:
 

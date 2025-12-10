@@ -17,6 +17,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.181.2",
+    "tsl-uniform-ui-vite-plugin": "^0.12.0",
     "tweakpane": "^4.0.5",
     "tweakpane-plugin-file-import": "^1.1.1"
   },
